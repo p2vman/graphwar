@@ -8,12 +8,11 @@ COPY build.gradle build.gradle
 COPY . .
 
 RUN chmod +x ./gradlew \
-    && ./gradlew clean assemble globalServerShadow --no-daemon || true
+    && ./gradlew clean globalServerShadow --no-daemon || true
 
-ARG JAR_NAME=build/libs/globalServerJar.jar
 FROM eclipse-temurin:8-jre
 WORKDIR /app
 
-COPY --from=builder /app/${JAR_NAME} /app/globalServerJar.jar
+COPY --from=builder /app/build/libs/globalServerJar.jar /app/globalServerJar.jar
 
 ENTRYPOINT ["java","-jar","/app/globalServerJar.jar"]
