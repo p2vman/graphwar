@@ -189,8 +189,6 @@ task graphwarShadow(type: com.github.jengelman.gradle.plugins.shadow.tasks.Shado
     }
 }
 
-
-
 task runGraphwarJar(type: Exec) {
     dependsOn graphwarShadow
     commandLine 'java', '-jar', graphwarShadow.archivePath
