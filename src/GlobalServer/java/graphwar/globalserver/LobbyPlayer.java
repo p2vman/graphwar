@@ -17,11 +17,12 @@
 
 package graphwar.globalserver;
 
-import java.io.IOException;
-import java.net.SocketTimeoutException;
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+
+import java.io.IOException;
+import java.net.SocketTimeoutException;
 
 
 public class LobbyPlayer implements Runnable

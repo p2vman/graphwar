@@ -18,12 +18,12 @@
 
 package graphwar.roomserver;
 
+import graphwar.graphserver.Constants;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
-
-import graphwar.graphserver.Constants;
 
 public class RoomServer implements Runnable
 {

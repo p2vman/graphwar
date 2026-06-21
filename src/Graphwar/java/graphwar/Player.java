@@ -16,11 +16,9 @@
 //  along with Graphwar.  If not, see <http://www.gnu.org/licenses/>.
 package graphwar;
 
-import java.awt.Color;
-import java.awt.FontMetrics;
-import java.awt.Toolkit;
-
 import graphwar.graphserver.Constants;
+
+import java.awt.*;
 
 public class Player
 {

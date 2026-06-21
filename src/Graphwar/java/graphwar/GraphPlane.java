@@ -17,13 +17,11 @@
 
 package graphwar;
 
-import java.awt.AlphaComposite;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.MediaTracker;
-import java.awt.RenderingHints;
+import graphwar.graphserver.Constants;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.GeneralPath;
@@ -32,12 +30,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Iterator;
 import java.util.List;
-
-import javax.imageio.ImageIO;
-import javax.swing.JPanel;
-import javax.swing.Timer;
-
-import graphwar.graphserver.Constants;
 
 public class GraphPlane extends JPanel implements ActionListener
 {

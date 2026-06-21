@@ -17,9 +17,9 @@
 
 package graphwar;
 
-import javax.swing.JPanel;
-
 import graphwar.graphserver.Constants;
+
+import javax.swing.*;
 
 public class GraphUI extends JPanel
 {

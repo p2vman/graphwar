@@ -17,17 +17,14 @@
 
 package graphwar;
 
-import java.awt.Dimension;
-import java.io.IOException;
-
-import javax.swing.JFrame;
-
+import graphwar.GlobalServers.ServerEntry;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.GraphServer;
 
-import javax.swing.JOptionPane;
+import javax.swing.*;
+import java.awt.*;
+import java.io.IOException;
 import java.util.List;
-import graphwar.GlobalServers.ServerEntry;
 
 public class Graphwar extends JFrame
 {

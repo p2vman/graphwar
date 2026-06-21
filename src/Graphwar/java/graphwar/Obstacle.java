@@ -16,13 +16,12 @@
 //  along with Graphwar.  If not, see <http://www.gnu.org/licenses/>.
 
 package graphwar;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.RenderingHints;
+
+import graphwar.graphserver.Constants;
+
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.Random;
-import graphwar.graphserver.Constants;
 
 public class Obstacle
 {

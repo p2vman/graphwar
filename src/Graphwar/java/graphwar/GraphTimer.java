@@ -17,16 +17,10 @@
 
 package graphwar;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
-import javax.swing.JPanel;
-import javax.swing.Timer;
 
 public class GraphTimer extends JPanel implements ActionListener
 {

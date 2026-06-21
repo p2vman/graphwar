@@ -17,21 +17,15 @@
 
 package graphwar;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import graphwar.graphserver.Constants;
+
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.io.IOException;
 import java.util.ListIterator;
-
-import javax.swing.JPanel;
-
-import graphwar.graphserver.Constants;
 
 public class RoomBoard extends JPanel implements MouseMotionListener, MouseListener
 {

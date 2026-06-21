@@ -16,22 +16,11 @@
 //  along with Graphwar.  If not, see <http://www.gnu.org/licenses/>.
 package graphwar.globalserver;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Vector;
-
+import graphwar.graphserver.Connection;
+import graphwar.graphserver.Constants;
+import graphwar.graphserver.NetworkProtocol;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -40,9 +29,12 @@ import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.util.AttributeKey;
 
-import graphwar.graphserver.Connection;
-import graphwar.graphserver.Constants;
-import graphwar.graphserver.NetworkProtocol;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Vector;
 
 
 public class GlobalServer implements Runnable

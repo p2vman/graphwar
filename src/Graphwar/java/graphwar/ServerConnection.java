@@ -16,12 +16,12 @@
 //  along with Graphwar.  If not, see <http://www.gnu.org/licenses/>.
 package graphwar;
 
-import java.io.IOException;
-import java.net.SocketTimeoutException;
-
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+
+import java.io.IOException;
+import java.net.SocketTimeoutException;
 
 public class ServerConnection implements Runnable
 {

@@ -17,9 +17,9 @@
 
 package graphwar;
 
-import java.util.Random;
-
 import graphwar.graphserver.Constants;
+
+import java.util.Random;
 
 public class Soldier
 {

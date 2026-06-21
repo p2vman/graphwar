@@ -16,11 +16,11 @@
 //  along with Graphwar.  If not, see <http://www.gnu.org/licenses/>.
 package graphwar;
 
+import graphwar.graphserver.Constants;
+
+import javax.swing.*;
 import java.applet.AudioClip;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Font;
-import java.awt.Graphics;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -29,13 +29,6 @@ import java.io.InputStreamReader;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Stack;
-
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-
-import graphwar.graphserver.Constants;
 
 public class PreGameScreen extends JPanel implements ActionListener
 {

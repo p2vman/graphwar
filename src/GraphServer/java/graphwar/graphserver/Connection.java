@@ -20,11 +20,7 @@ package graphwar.graphserver;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.URI;
 
 public class Connection

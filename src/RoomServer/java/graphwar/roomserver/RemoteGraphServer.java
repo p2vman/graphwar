@@ -17,12 +17,12 @@
 
 package graphwar.roomserver;
 
-import java.io.IOException;
-
 import graphwar.graphserver.ClientConnection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.GraphServer;
 import graphwar.graphserver.Player;
+
+import java.io.IOException;
 
 public class RemoteGraphServer extends GraphServer
 {

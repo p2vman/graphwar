@@ -17,9 +17,9 @@
 
 package graphwar.roomserver;
 
-import java.io.IOException;
-
 import graphwar.graphserver.Constants;
+
+import java.io.IOException;
 
 public class Room
 {

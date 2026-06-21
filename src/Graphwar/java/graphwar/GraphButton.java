@@ -19,14 +19,12 @@
 package graphwar;
 
 
-import java.awt.Graphics;
-import java.awt.Image;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
-
-import javax.swing.JButton;
 
 public class GraphButton extends JButton implements MouseListener, MouseMotionListener
 {

@@ -17,18 +17,13 @@
 
 package graphwar;
 
+import graphwar.graphserver.Constants;
+
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Random;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import graphwar.graphserver.Constants;
 
 public class PolishNotationFunction
 {			

@@ -17,6 +17,10 @@
 
 package graphwar;
 
+import graphwar.graphserver.Connection;
+import graphwar.graphserver.Constants;
+import graphwar.graphserver.NetworkProtocol;
+
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
@@ -25,10 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Vector;
-
-import graphwar.graphserver.Connection;
-import graphwar.graphserver.Constants;
-import graphwar.graphserver.NetworkProtocol;
 
 public class GlobalClient implements Runnable
 {	

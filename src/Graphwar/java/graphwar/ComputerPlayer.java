@@ -17,11 +17,11 @@
 
 package graphwar;
 
+import graphwar.graphserver.Constants;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Random;
-
-import graphwar.graphserver.Constants;
 
 
 public class ComputerPlayer extends Player implements Runnable

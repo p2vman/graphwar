@@ -16,23 +16,17 @@
 //  along with Graphwar.  If not, see <http://www.gnu.org/licenses/>.
 package graphwar;
 
+import graphwar.graphserver.Constants;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.applet.Applet;
 import java.applet.AudioClip;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.MediaTracker;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Random;
-
-import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JTextField;
-
-import graphwar.graphserver.Constants;
 
 public class GraphUtil
 {

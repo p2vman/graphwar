@@ -17,18 +17,14 @@
 
 package graphwar;
 
+import graphwar.graphserver.Constants;
+import graphwar.graphserver.NetworkProtocol;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Queue;
-
-import graphwar.graphserver.Constants;
-import graphwar.graphserver.NetworkProtocol;
+import java.util.*;
 
 public class GameData implements Runnable
 {
