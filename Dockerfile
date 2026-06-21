@@ -4,7 +4,6 @@ WORKDIR /app
 COPY gradlew gradlew
 COPY gradle gradle
 COPY build.gradle build.gradle
-COPY settings.gradle settings.gradle
 
 COPY . .
 
