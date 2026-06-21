@@ -2,8 +2,7 @@
 builder = "railpack"
 
 [build.config]
-languages.java.version = "8"
-
+pkgs = ["openjdk8"]
 buildCmd = "./gradlew globalServerShadow --no-daemon -x test"
 
 [deploy]
