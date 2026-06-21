@@ -1,0 +1,197 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url 'https://plugins.gradle.org/m2/' }
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.4'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    GlobalServer {
+        java {
+            srcDirs = [
+                    'src/GlobalServer/java'
+            ]
+        }
+        resources {
+            srcDirs = ['src/GlobalServer/resources']
+        }
+    }
+    GraphServer {
+        java {
+            srcDirs = ['src/GraphServer/java']
+        }
+
+        resources {
+            srcDirs = ['src/GraphServer/resources']
+        }
+    }
+    RoomServer {
+        java {
+            srcDirs = [
+                    'src/RoomServer/java',
+            ]
+        }
+        resources {
+            srcDirs = ['src/RoomServer/resources']
+        }
+    }
+    Graphwar {
+        java {
+            srcDirs = ['src/Graphwar/java']
+        }
+        resources {
+            srcDirs = ['src/Graphwar/resources']
+        }
+    }
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+}
+
+dependencies {
+    // https://mvnrepository.com/artifact/org.projectlombok/lombok
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+
+    compileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
+    annotationProcessor 'com.google.auto.service:auto-service:1.1.1'
+
+    //// Source: https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
+    //implementation 'it.unimi.dsi:fastutil:8.5.18'
+
+    implementation "io.netty:netty-transport:4.2.15.Final"
+    implementation "io.netty:netty-buffer:4.2.15.Final"
+    implementation "io.netty:netty-codec:4.2.15.Final"
+    implementation "io.netty:netty-handler:4.2.15.Final"
+    implementation "io.netty:netty-codec-http:4.2.15.Final"
+
+    // Source: https://mvnrepository.com/artifact/org.agrona/agrona
+    implementation 'org.agrona:agrona:2.4.1'
+}
+
+sourceSets.GlobalServer.compileClasspath += sourceSets.GraphServer.output
+sourceSets.GlobalServer.runtimeClasspath += sourceSets.GraphServer.output
+sourceSets.GlobalServer.compileClasspath += sourceSets.main.output
+sourceSets.GlobalServer.runtimeClasspath += sourceSets.main.output
+
+sourceSets.RoomServer.compileClasspath += sourceSets.GraphServer.output
+sourceSets.RoomServer.runtimeClasspath += sourceSets.GraphServer.output
+sourceSets.RoomServer.compileClasspath += sourceSets.main.output
+sourceSets.RoomServer.runtimeClasspath += sourceSets.main.output
+
+sourceSets.Graphwar.compileClasspath += sourceSets.GraphServer.output
+sourceSets.Graphwar.runtimeClasspath += sourceSets.GraphServer.output
+sourceSets.Graphwar.compileClasspath += sourceSets.main.output
+sourceSets.Graphwar.runtimeClasspath += sourceSets.main.output
+
+configure([sourceSets.GlobalServer, sourceSets.GraphServer, sourceSets.RoomServer, sourceSets.Graphwar]) { sourceSet ->
+    sourceSet.compileClasspath += sourceSets.main.compileClasspath
+    sourceSet.runtimeClasspath += sourceSets.main.runtimeClasspath
+}
+
+
+task roomServerJar(type: Jar) {
+    archiveName = 'roomServer.jar'
+
+    from sourceSets.RoomServer.output
+    from sourceSets.GraphServer.output
+    from sourceSets.main.output
+
+    manifest {
+        attributes 'Main-Class': 'io.p2vman.bootstrap.Main'
+    }
+}
+
+task roomServerShadow(type: com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    dependsOn roomServerJar
+    archiveName = 'roomServerJar.jar'
+
+    from sourceSets.RoomServer.output
+    from sourceSets.GraphServer.output
+    from sourceSets.main.output
+
+    configurations = [project.configurations.runtimeClasspath]
+
+    manifest {
+        attributes 'Main-Class': 'graphwar.roomserver.RoomServer'
+    }
+}
+
+
+
+task runRoomServerJar(type: Exec) {
+    dependsOn roomServerShadow
+    commandLine 'java', '-jar', roomServerShadow.archivePath
+}
+
+
+task globalServerJar(type: Jar) {
+    archiveName = 'globalServer.jar'
+
+    from sourceSets.GlobalServer.output
+    from sourceSets.GraphServer.output
+}
+
+task globalServerShadow(type: com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    dependsOn globalServerJar
+    archiveName = 'globalServerJar.jar'
+
+    from sourceSets.GlobalServer.output
+    from sourceSets.GraphServer.output
+    from sourceSets.main.output
+
+    configurations = [project.configurations.runtimeClasspath]
+
+    manifest {
+        attributes 'Main-Class': 'graphwar.globalserver.GlobalServer'
+    }
+}
+
+task runGlobalServerJar(type: Exec) {
+    dependsOn globalServerShadow
+    commandLine 'java', '-jar', globalServerShadow.archivePath
+}
+
+task graphwarJar(type: Jar) {
+    archiveName = 'graphwar.jar'
+
+    from sourceSets.Graphwar.output
+    from sourceSets.GraphServer.output
+}
+
+task graphwarShadow(type: com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    dependsOn graphwarJar
+    archiveName = 'graphwarJar.jar'
+
+    from sourceSets.Graphwar.output
+    from sourceSets.GraphServer.output
+    from sourceSets.main.output
+
+    configurations = [project.configurations.runtimeClasspath]
+
+    manifest {
+        attributes 'Main-Class': 'graphwar.Graphwar'
+    }
+}
+
+
+
+task runGraphwarJar(type: Exec) {
+    dependsOn graphwarShadow
+    commandLine 'java', '-jar', graphwarShadow.archivePath
+}
