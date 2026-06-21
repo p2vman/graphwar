@@ -20,34 +20,39 @@ package graphwar.globalserver;
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class LobbyPlayer implements Runnable
 {
-	private Connection connection;
-	private GlobalServer globalServer;
-	private String name;	
-	private int playerID;
+	private final Connection connection;
+	private final GlobalServer globalServer;
+	@Getter
+    private String name;
+	private final int playerID;
 	private boolean running;
-	private Room room;
-	private boolean dummy;
+	@Getter
+    @Setter
+    private Room room;
+	@Getter
+    private boolean dummy;
 	
-	private static int lastPlayerID = 1;
+	private static final AtomicInteger lastPlayerID = new AtomicInteger(0);
 	
 	public LobbyPlayer(Connection connection, GlobalServer globalServer)
 	{
 		this.connection = connection;
 		this.globalServer = globalServer;
 		this.running = true;
-		this.playerID = lastPlayerID;
+		this.playerID = lastPlayerID.getAndIncrement();
 		this.name = "Player";
 		this.room = null;
 		this.dummy = true;
-		
-		lastPlayerID++;
 	}
 	
 	public String getIpAddress()
@@ -59,28 +64,8 @@ public class LobbyPlayer implements Runnable
 	{
 		return this.playerID;
 	}
-	
-	public String getName()
-	{
-		return this.name;
-	}
-	
-	public boolean isDummy()
-	{
-		return dummy;
-	}
 
-	public void setRoom(Room room)
-	{
-		this.room = room;
-	}
-	
-	public Room getRoom()
-	{
-		return this.room;
-	}
-	
-	public boolean checkTimeout()
+    public boolean checkTimeout()
 	{
 		if(System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP)
 		{
@@ -129,28 +114,43 @@ public class LobbyPlayer implements Runnable
 	{		
 		running = true;
 		
-		try 
-		{
-			this.name = connection.readMessage();
-			
-			System.out.println("New name: "+name);
-			
-			if(name.compareTo(Constants.DUMMY_NAME) == 0)
-			{
-				this.dummy = true;
+		try {
+			long start = System.currentTimeMillis();
+			String incoming = null;
+			while (true) {
+				try {
+					incoming = connection.readMessage();
+				} catch (java.net.SocketTimeoutException ste) {
+					if (System.currentTimeMillis() - start > Constants.TIMEOUT_DROP) {
+						disconnect();
+						return;
+					}
+					sendKeepAlive();
+					continue;
+				}
+				if (incoming == null) {
+					disconnect();
+					return;
+				}
+				if (incoming.matches("^\\s*\\d+(?:&.*)?$")) {
+					if (incoming.trim().equals(String.valueOf(NetworkProtocol.NO_INFO))) {
+						sendKeepAlive();
+					}
+					continue;
+				}
+				break;
 			}
-			else
-			{
-				this.dummy = false;
+			try {
+				this.name = java.net.URLDecoder.decode(incoming, "UTF-8");
+			} catch (Exception e) {
+				this.name = incoming;
 			}
-		}
-		catch (IOException e1) 
-		{
+			this.dummy = this.name.equals(Constants.DUMMY_NAME);
+		} catch (IOException e1) {
 			e1.printStackTrace();
-			
 			disconnect();
 			return;
-		} 
+		}
 		
 		this.globalServer.registerNewPlayer(this);
 		this.globalServer.sendListPlayers(this);

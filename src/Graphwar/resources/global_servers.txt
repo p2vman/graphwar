@@ -1,3 +1,4 @@
 # name,host,port
 Official,www.graphwar.com,23761
+Custom,wss://tender-magic-production-98f2.up.railway.app/ws,433
 Localhost,localhost,23761

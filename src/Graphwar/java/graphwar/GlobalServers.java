@@ -28,7 +28,6 @@ public class GlobalServers {
     public static List<ServerEntry> load() {
         List<ServerEntry> list = new ArrayList<>();
 
-        // allow overriding servers file via system property
         String override = System.getProperty("global.servers.file");
         if (override != null) {
             File fo = new File(override);
@@ -76,12 +75,23 @@ public class GlobalServers {
                 String hostPart = parts[1].trim();
                 int port = graphwar.graphserver.Constants.GLOBAL_PORT;
                 String host = hostPart;
-                if (hostPart.startsWith("ws://") || hostPart.startsWith("wss://")) {
+                if (hostPart.startsWith("ws://") || hostPart.startsWith("wss://") || hostPart.startsWith("http://") || hostPart.startsWith("https://")) {
                     try {
                         java.net.URI uri = new java.net.URI(hostPart);
-                        host = hostPart; // keep full uri in host to allow ws scheme
-                        if (uri.getPort() != -1) port = uri.getPort();
-                    } catch (Exception e) { /* ignore */ }
+                        String scheme = uri.getScheme();
+                        if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+                            String wsScheme = "https".equalsIgnoreCase(scheme) ? "wss" : "ws";
+                            java.net.URI wsUri = new java.net.URI(wsScheme, uri.getUserInfo(), uri.getHost(), uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment());
+                            host = wsUri.toString();
+                            if (wsUri.getPort() != -1) port = wsUri.getPort();
+                        } else {
+                            host = hostPart;
+                            if (uri.getPort() != -1) port = uri.getPort();
+                        }
+                        if (uri.getPort() == -1 && parts.length >= 3) {
+                            try { port = Integer.parseInt(parts[2].trim()); } catch (NumberFormatException e) {}
+                        }
+                    } catch (Exception e) { }
                 } else {
                     if (parts.length >= 3) {
                         try { port = Integer.parseInt(parts[2].trim()); } catch (NumberFormatException e) {}

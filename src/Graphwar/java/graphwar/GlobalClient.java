@@ -20,6 +20,7 @@ package graphwar;
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -32,23 +33,19 @@ import java.util.Vector;
 
 public class GlobalClient implements Runnable
 {	
-	private class LobbyPlayer
+	private static class LobbyPlayer
 	{
-		private String name;
-		private int playerID;
+		@Getter
+        private final String name;
+		private final int playerID;
 		
 		public LobbyPlayer(String name, int playerID)
 		{
 			this.name = name;
 			this.playerID = playerID;
 		}
-		
-		public String getName()
-		{
-			return this.name;
-		}
-		
-		public int getID()
+
+        public int getID()
 		{
 			return this.playerID;
 		}
@@ -56,8 +53,8 @@ public class GlobalClient implements Runnable
 	
 	private Connection connection;
 	
-	private List<LobbyPlayer> players;
-	private List<Room> rooms;
+	private final List<LobbyPlayer> players;
+	private final List<Room> rooms;
 	
 	private String localPlayer;
 	
@@ -69,7 +66,7 @@ public class GlobalClient implements Runnable
 	private String roomName;
 	private int roomPort;
 	
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
 	public GlobalClient(Graphwar graphwar)
 	{
@@ -97,7 +94,7 @@ public class GlobalClient implements Runnable
     
 	public void setLocalPlayerName(String name)
 	{
-		if (name != null && name.length() > 0) this.localPlayer = name;
+		if (name != null && !name.isEmpty()) this.localPlayer = name;
 	}
     
 		

@@ -67,6 +67,19 @@ public class Connection
             String wsHost = uri.getHost();
             int wsPort = uri.getPort() == -1 ? ("wss".equals(scheme) ? 443 : 80) : uri.getPort();
 
+            final io.netty.handler.ssl.SslContext sslCtx;
+            if ("wss".equalsIgnoreCase(scheme)) {
+                io.netty.handler.ssl.SslContext tmp = null;
+                try {
+                    tmp = io.netty.handler.ssl.SslContextBuilder.forClient().build();
+                } catch (Exception e) {
+                    tmp = null;
+                }
+                sslCtx = tmp;
+            } else {
+                sslCtx = null;
+            }
+
             clientGroup = new io.netty.channel.nio.NioEventLoopGroup(1);
             Bootstrap b = new Bootstrap();
             b.group(clientGroup)
@@ -76,6 +89,9 @@ public class Connection
                  @Override
                  protected void initChannel(Channel ch) {
                      ChannelPipeline p = ch.pipeline();
+                     if (sslCtx != null) {
+                         p.addLast(sslCtx.newHandler(ch.alloc(), wsHost, wsPort));
+                     }
                      p.addLast(new io.netty.handler.codec.http.HttpClientCodec());
                      p.addLast(new io.netty.handler.codec.http.HttpObjectAggregator(8192));
                      p.addLast(new io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler(
