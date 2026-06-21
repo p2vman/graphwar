@@ -1,0 +1,14 @@
+[build]
+builder = "railpack"
+
+[build.config]
+languages.java.version = "8"
+
+buildCmd = "./gradlew globalServerShadow --no-daemon -x test"
+
+[deploy]
+startCmd = "java -jar **/build/libs/globalServerJar.jar"
+restartPolicyType = "on-failure"
+
+[[deploy.ports]]
+port = 23762
