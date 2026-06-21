@@ -1,9 +1,10 @@
 [build]
-builder = "railpack"
+builder = "nixpacks"
 
 [build.config]
-pkgs = ["openjdk8"]
-buildCmd = "./gradlew globalServerShadow --no-daemon -x test"
+pkgs = ["openjdk8", "gradle"]
+
+buildCmd = "gradle roomServerShadow --no-daemon -x test"
 
 [deploy]
 startCmd = "java -jar **/build/libs/globalServerJar.jar"
