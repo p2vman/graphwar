@@ -2,9 +2,14 @@
 builder = "nixpacks"
 
 [build.config]
-pkgs = ["openjdk8", "gradle"]
+pkgs = ["openjdk8", "wget", "unzip"]
 
-buildCmd = "gradle roomServerShadow --no-daemon -x test"
+buildCmd = """
+wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip && \
+unzip -q gradle-4.10.3-bin.zip && \
+export PATH=$PWD/gradle-4.10.3/bin:$PATH && \
+gradle roomServerShadow --no-daemon -x test
+"""
 
 [deploy]
 startCmd = "java -jar **/build/libs/globalServerJar.jar"
