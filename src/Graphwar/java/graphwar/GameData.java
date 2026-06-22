@@ -19,28 +19,38 @@ package graphwar;
 
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 public class GameData implements Runnable
 {
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
 	private ServerConnection serverConnection;
 	
-	private List<Player> players;
-	private Queue<Integer> nextPCs;	
+	@Getter
+    private ObjectList<Player> players;
+	private final Queue<Integer> nextPCs;
 	
-	private Obstacle obstacle;
+	@Getter
+    private Obstacle obstacle;
 	
-	private int gameMode;
-	private int gameState;
+	@Getter
+    private int gameMode;
+	@Getter
+    private int gameState;
 	
-	private boolean leader;
+	@Getter
+    private boolean leader;
 	
 	private int currentTurn;
 	private Player lastLocalHumanPlayer;
@@ -48,15 +58,20 @@ public class GameData implements Runnable
 	private boolean turnTimeUp;
 	private boolean nextTurnSent;
 	
-	private Function function;
-	private boolean drawingFunction;
+	@Getter
+    private Function function;
+	@Getter
+    private boolean drawingFunction;
 	private long timeStartedDrawingFunction;
-	private boolean exploding;
+	@Getter
+    private boolean exploding;
 	private long timeStartedExploding;
-	private ArrayList<Soldier> soldiersHit;
+	private ObjectList<Soldier> soldiersHit;
 	
-	private boolean angleUp;
-	private boolean angleDown;
+	@Getter
+    private boolean angleUp;
+	@Getter
+    private boolean angleDown;
 	private long timeStartedAngle;
 	
 	private boolean countingDown;
@@ -70,9 +85,9 @@ public class GameData implements Runnable
 		
 		serverConnection = null;
 		
-		players = new ArrayList<Player>();
-		nextPCs = new LinkedList<Integer>();
-		
+		players = new ObjectArrayList<>();
+		nextPCs = new ArrayDeque<>();
+
 		obstacle = null;
 		
 		gameMode = Constants.NORMAL_FUNC;
@@ -81,7 +96,7 @@ public class GameData implements Runnable
 		function = null;
 		drawingFunction = false;
 		exploding = false;
-		soldiersHit = new ArrayList<Soldier>();
+		soldiersHit = new ObjectArrayList<>();
 		
 		this.leader = false;
 		
@@ -106,7 +121,7 @@ public class GameData implements Runnable
 		
 		drawingFunction = false;
 		exploding = false;
-		players = new ArrayList<Player>();
+		players = new ObjectArrayList<>();
 		lastLocalHumanPlayer = null;
 		currentTurn = -1;
 		turnTimeUp = false;
@@ -116,42 +131,27 @@ public class GameData implements Runnable
 		
 		((GlobalScreen)graphwar.getUI().getScreen(Constants.GLOBAL_ROOM_SCREEN)).refreshGameButton();
 	}
-	
-	public List<Player> getPlayers()
+
+    public Player getPlayer(int playerID)
 	{
-		return players;
-	}
-	
-	public Player getPlayer(int playerID)
-	{
-		ListIterator<Player> itr = players.listIterator();
-    	
-    	while(itr.hasNext())
-    	{
-    		Player player = itr.next();
-    		
-    		if(player.getID() == playerID)
-    		{
-    			return player;
-    		}
-    	}
+
+        for (Player player : players) {
+            if (player.getID() == playerID) {
+                return player;
+            }
+        }
     		
     	return null;
 	}
 	
 	public Player getFirstLocalPlayer()
 	{
-		ListIterator<Player> itr = players.listIterator();
-    	
-    	while(itr.hasNext())
-    	{
-    		Player player = itr.next();
-    		
-    		if(player.isLocalPlayer())
-    		{
-    			return player;
-    		}
-    	}
+
+        for (Player player : players) {
+            if (player.isLocalPlayer()) {
+                return player;
+            }
+        }
     	
     	return null;
 	}
@@ -162,44 +162,21 @@ public class GameData implements Runnable
 		{
 			if(getFirstLocalPlayer()!=null)
 			{
-				if(getFirstLocalPlayer().getTeam() == Constants.TEAM2)
-				{
-					return true;
-				}				
+                return getFirstLocalPlayer().getTeam() == Constants.TEAM2;
 			}
 			
 			return false;
 		}
-		
-		if(lastLocalHumanPlayer.getTeam() == Constants.TEAM2)
-		{
-			return true;
-		}
-		
-		return false;
-	}
-	
-	public boolean isLeader()
+
+        return lastLocalHumanPlayer.getTeam() == Constants.TEAM2;
+    }
+
+    public boolean isFunctionReversed()
 	{
-		return this.leader;
-	}
-	
-	public boolean isFunctionReversed()
-	{
-		if(getCurrentTurnPlayer().getTeam() == Constants.TEAM2)
-		{
-			return true;
-		}
-		
-		return false;
-	}
-	
-	public Obstacle getObstacle()
-	{
-		return obstacle;
-	}
-	
-	public Player getCurrentTurnPlayer()
+        return getCurrentTurnPlayer().getTeam() == Constants.TEAM2;
+    }
+
+    public Player getCurrentTurnPlayer()
 	{
 		return players.get(currentTurn);
 	}
@@ -222,7 +199,7 @@ public class GameData implements Runnable
 		{
 			time = 0;
 			
-			if(turnTimeUp == false)
+			if(!turnTimeUp)
 			{
 				turnTimeUp = true;
 				
@@ -283,7 +260,7 @@ public class GameData implements Runnable
 	{
 		Player currentPlayer = getCurrentTurnPlayer();
 
-		if(currentPlayer.isLocalPlayer() && drawingFunction == false)
+		if(currentPlayer.isLocalPlayer() && !drawingFunction)
 		{
 			try
 			{
@@ -301,7 +278,7 @@ public class GameData implements Runnable
 	{
 		Player currentPlayer = getCurrentTurnPlayer();
 		
-		if(currentPlayer.isLocalPlayer() && drawingFunction == false)
+		if(currentPlayer.isLocalPlayer() && !drawingFunction)
 		{
 			try 
 			{
@@ -331,18 +308,8 @@ public class GameData implements Runnable
 		String message = NetworkProtocol.NEXT_MODE+"";
 		serverConnection.sendMessage(message);
 	}
-	
-	public int getGameMode()
-	{
-		return gameMode;
-	}
-	
-	public int getGameState()
-	{
-		return gameState;
-	}
-	
-	public void addPlayer(String name)
+
+    public void addPlayer(String name)
 	{
 		if(players.size() < Constants.MAX_PLAYERS)
 		{
@@ -362,7 +329,7 @@ public class GameData implements Runnable
 	{
 		if(players.size() < Constants.MAX_PLAYERS)
 		{
-			nextPCs.add(new Integer(level));
+			nextPCs.add(level);
 			
 			addPlayer(name);
 		}
@@ -398,20 +365,10 @@ public class GameData implements Runnable
 		String message = NetworkProtocol.SET_TEAM+"&"+otherTeam+"&"+player.getID();
 		serverConnection.sendMessage(message);		
 	}
-	
-	public boolean isAngleUp()
+
+    public void angleUp()
 	{
-		return angleUp;
-	}
-	
-	public boolean isAngleDown()
-	{
-		return angleDown;
-	}
-	
-	public void angleUp()
-	{
-		if(angleUp == false && this.getCurrentTurnPlayer().isLocalPlayer() && !(this.getCurrentTurnPlayer() instanceof ComputerPlayer))
+		if(!angleUp && this.getCurrentTurnPlayer().isLocalPlayer() && !(this.getCurrentTurnPlayer() instanceof ComputerPlayer))
 		{
 			this.timeStartedAngle = System.currentTimeMillis();
 			this.angleUp = true;
@@ -422,7 +379,7 @@ public class GameData implements Runnable
 	
 	public void angleDown()
 	{
-		if(angleDown == false && this.getCurrentTurnPlayer().isLocalPlayer() && !(this.getCurrentTurnPlayer() instanceof ComputerPlayer))
+		if(!angleDown && this.getCurrentTurnPlayer().isLocalPlayer() && !(this.getCurrentTurnPlayer() instanceof ComputerPlayer))
 		{
 			this.timeStartedAngle = System.currentTimeMillis();
 			this.angleDown = true;
@@ -509,36 +466,21 @@ public class GameData implements Runnable
 	{
 		boolean team1Alive = false;
 		boolean team2Alive = false;
-		
-		ListIterator<Player> itr = players.listIterator();
-    	
-    	while(itr.hasNext())
-    	{
-    		Player player = itr.next();
-    		
-    		for(int j=0; j<player.getNumSoldiers(); j++)
-			{
-				if(player.getSoldiers()[j].isAlive())
-				{
-					if(player.getTeam() == Constants.TEAM1)
-					{
-						team1Alive = true;
-					}
-					else
-					{
-						team2Alive = true;
-					}
-				}
-			}
-    	}
-		
-		if(team1Alive==false || team2Alive==false)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+
+        for (Player player : players) {
+            for (int j = 0; j < player.getNumSoldiers(); j++) {
+                if (player.getSoldiers()[j].isAlive()) {
+                    if (player.getTeam() == Constants.TEAM1) {
+                        team1Alive = true;
+                    } else {
+                        team2Alive = true;
+                    }
+                }
+            }
+        }
+
+        return !team1Alive || !team2Alive;
+    }
 	
 	private void nextTurn()
 	{
@@ -585,7 +527,7 @@ public class GameData implements Runnable
 		
 		if(gameState == Constants.GAME)
 		{
-			if(players.get(currentTurn).getID() == player.getID() && this.drawingFunction==false)
+			if(players.get(currentTurn).getID() == player.getID() && !this.drawingFunction)
 			{
 				nextTurn();
 			}
@@ -609,7 +551,7 @@ public class GameData implements Runnable
 			players.remove(player);
 			graphwar.getGlobalClient().sendRoomStatus();
 			
-			if(checkHaveLocals() == false)
+			if(!checkHaveLocals())
 			{
 				disconnectKick();
 			}
@@ -618,17 +560,12 @@ public class GameData implements Runnable
 	
 	private boolean checkHaveLocals()
 	{
-		ListIterator<Player> itr = players.listIterator();
-    	
-    	while(itr.hasNext())
-    	{
-    		Player player = itr.next();
-    		
-    		if(player.isLocalPlayer())
-    		{
-    			return true;
-    		}
-    	}
+
+        for (Player player : players) {
+            if (player.isLocalPlayer()) {
+                return true;
+            }
+        }
     	
     	return false;
 	}
@@ -657,7 +594,7 @@ public class GameData implements Runnable
 		
 		if(local && !nextPCs.isEmpty())
 		{
-			int level = nextPCs.poll().intValue();			
+			int level = nextPCs.poll();
 			player = new ComputerPlayer(name, playerID, team, local, numSoldiers, ready, level, graphwar);
 		}
 		else
@@ -736,7 +673,7 @@ public class GameData implements Runnable
 		
 		if(gameState == Constants.PRE_GAME)
 		{
-			((PreGameScreen)graphwar.getUI().getScreen(Constants.PRE_GAME_SCREEN)).repaint();
+			graphwar.getUI().getScreen(Constants.PRE_GAME_SCREEN).repaint();
 		}
 		
 		if(player.isLocalPlayer())
@@ -744,7 +681,7 @@ public class GameData implements Runnable
 			updateReadyButton();
 		}
 		
-		if(ready == false && countingDown==true)
+		if(!ready && countingDown)
 		{
 			if(countdowner != null)
 			{
@@ -766,7 +703,7 @@ public class GameData implements Runnable
     		
     		if(player.isLocalPlayer())
     		{
-    			if(player.getReady() == false)
+    			if(!player.getReady())
     			{
     				readyOn = false;
     				break;
@@ -780,17 +717,12 @@ public class GameData implements Runnable
 	
 	private void stopComputers()
 	{
-		ListIterator<Player> itr = players.listIterator();
-    	
-    	while(itr.hasNext())
-    	{
-    		Player player = itr.next();
-    		
-    		if(player instanceof ComputerPlayer)
-    		{
-    			((ComputerPlayer) player).stopThinkFunction();
-    		}
-    	}
+
+        for (Player player : players) {
+            if (player instanceof ComputerPlayer) {
+                ((ComputerPlayer) player).stopThinkFunction();
+            }
+        }
 	}
 	
 	private void startGameMessage(String[] info) throws Exception
@@ -914,7 +846,7 @@ public class GameData implements Runnable
 	
 	private void fireFunctionMessage(String[] info) throws Exception
 	{
-		if(info.length == 3 && drawingFunction == false)
+		if(info.length == 3 && !drawingFunction)
 		{
 			int playerID = Integer.parseInt(info[1]);
 			String function = URLDecoder.decode(info[2], "UTF-8");
@@ -940,42 +872,27 @@ public class GameData implements Runnable
 
 	private void updateFunctionMessage(String[] info) throws Exception
 	{
-		if(info.length == 3 && drawingFunction == false)
+		if(info.length == 3 && !drawingFunction)
 		{
 			int playerID = Integer.parseInt(info[1]);
 			String function = URLDecoder.decode(info[2], "UTF-8");
 
 			Player player = getPlayer(playerID);
 
-			if(players.get(currentTurn).getID() == playerID && player.isLocalPlayer() == false)
+			if(players.get(currentTurn).getID() == playerID && !player.isLocalPlayer())
 			{
 				((GameScreen)graphwar.getUI().getScreen(Constants.GAME_SCREEN)).updateFunction(function);
 			}
 		}
 	}
-	
-	public boolean isDrawingFunction()
-	{
-		return drawingFunction;
-	}
-	
-	public Function getFunction()
-	{
-		return function;
-	}
 
-	public boolean isExploding()
-	{
-		return exploding;
-	}
-	
-	public synchronized long getTimeExploding()
+    public synchronized long getTimeExploding()
 	{
 		long time = System.currentTimeMillis()-timeStartedExploding;
 		
 		if(time > Constants.NEXT_TURN_DELAY)
 		{			
-			if(exploding==true && nextTurnSent==false)
+			if(exploding && !nextTurnSent)
 			{
 				nextTurn();
 				nextTurnSent = true;
@@ -1029,29 +946,19 @@ public class GameData implements Runnable
 			//this.drawingFunction = false;
 			//nextTurn();
 		}
-		
-		ListIterator<Soldier> itr = soldiersHit.listIterator();
-		
-		while(itr.hasNext())
-		{
-			Soldier soldier = itr.next();
-			
-			if(soldier.isAlive() == true)
-			{
-				if(soldier.isExploding())
-				{
-					if(soldier.getTimeExploding() > Constants.SOLDIER_MAX_DEATH_TIME)
-					{
-						soldier.setExploding(false);
-					}
-				}		
-				else if(numDrawSteps > soldier.getKillPosition())
-				{
-					soldier.setExploding(true);
-					soldier.setAlive(false);
-				}
-			}
-		}
+
+        for (Soldier soldier : soldiersHit) {
+            if (soldier.isAlive()) {
+                if (soldier.isExploding()) {
+                    if (soldier.getTimeExploding() > Constants.SOLDIER_MAX_DEATH_TIME) {
+                        soldier.setExploding(false);
+                    }
+                } else if (numDrawSteps > soldier.getKillPosition()) {
+                    soldier.setExploding(true);
+                    soldier.setAlive(false);
+                }
+            }
+        }
 		
 		return numDrawSteps;
 	}
@@ -1095,7 +1002,7 @@ public class GameData implements Runnable
 			}			
 		}
 		
-		soldiersHit = new ArrayList<Soldier>();
+		soldiersHit = new ObjectArrayList<>();
 		int numPlayersHit = function.getNumPlayersHit();
 		for(int i=0; i<numPlayersHit; i++)
 		{
@@ -1113,17 +1020,7 @@ public class GameData implements Runnable
 	
 	private void removeDisconnectedPlayers()
 	{
-		ListIterator<Player> itr = players.listIterator();
-    	
-    	while(itr.hasNext())
-    	{
-    		Player player = itr.next();
-    		
-    		if(player.isDisconnected())
-    		{
-    			itr.remove();    			
-    		}
-    	}
+        players.removeIf(Player::isDisconnected);
 	}
 	
 	private void finishGameMessage(String[] info) throws Exception
@@ -1137,26 +1034,19 @@ public class GameData implements Runnable
 		stopComputers();		
 		
 		((GameScreen)graphwar.getUI().getScreen(Constants.GAME_SCREEN)).stopPanel();
-		Thread.sleep(200);	//This should be enough so that the game is not being painted when players are removed
-		
-		ListIterator<Player> itr = players.listIterator();
-    	
-    	while(itr.hasNext())
-    	{
-    		Player player = itr.next();
-    		
-    		Soldier[] soldiers = player.getSoldiers();
-    		
-    		for(int i=0; i<soldiers.length; i++)
-    		{
-    			if(soldiers[i].isAlive())
-    			{
-    				((PreGameScreen)graphwar.getUI().getScreen(Constants.PRE_GAME_SCREEN)).addChat(null, player.getName()+" won the game.");
-    				break;
-    			}
-    		}
-    					
-		}
+		LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(200));	//This should be enough so that the game is not being painted when players are removed
+
+        for (Player player : players) {
+            Soldier[] soldiers = player.getSoldiers();
+
+            for (Soldier soldier : soldiers) {
+                if (soldier.isAlive()) {
+                    ((PreGameScreen) graphwar.getUI().getScreen(Constants.PRE_GAME_SCREEN)).addChat(null, player.getName() + " won the game.");
+                    break;
+                }
+            }
+
+        }
 			
 		removeDisconnectedPlayers();
 		
@@ -1173,7 +1063,7 @@ public class GameData implements Runnable
 		
 		Player player = getPlayer(playerID);
 		
-		if(player.isLocalPlayer() == false)
+		if(!player.isLocalPlayer())
 		{
 			player.getSoldiers()[soldierIndex].setAngle(angle);
 			
@@ -1244,7 +1134,7 @@ public class GameData implements Runnable
 	
 	private void startCountdownMessage(String[] info) throws Exception
 	{
-		if(countingDown==false)
+		if(!countingDown)
 		{	
 			if(countdowner != null)
 			{
@@ -1257,7 +1147,7 @@ public class GameData implements Runnable
 	
 	private void reorderMessage(String[] info) throws Exception
 	{
-		List<Player> newPlayers = new ArrayList<Player>();
+		ObjectList<Player> newPlayers = new ObjectArrayList<>();
 		
 		for(int i=1; i<info.length; i++)
 		{
@@ -1467,15 +1357,8 @@ public class GameData implements Runnable
 			{
 				this.updateDrawingStuff();
 			}
-			
-			try
-			{
-				Thread.sleep(2000);
-			} 
-			catch (InterruptedException e)
-			{
-				e.printStackTrace();
-			}
+
+			LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(2000));
 		}
 	}
 

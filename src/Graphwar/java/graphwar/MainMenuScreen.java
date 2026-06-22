@@ -30,42 +30,42 @@ import java.util.Stack;
 
 public class MainMenuScreen extends JPanel implements ActionListener
 {	
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
-	private JLabel[] backgroundImages;
+	private final JLabel[] backgroundImages;
 	
-	private GraphButton joinGlobal;
-	private GraphButton createGame;
-	private GraphButton joinGame;
+	private final GraphButton joinGlobal;
+	private final GraphButton createGame;
+	private final GraphButton joinGame;
 	
 	private String message;
 	private int messageX;
 	private boolean showMessage;	
 	
-	private JLabel[] backgroundsGlobal;
-	private JTextField nameFieldGlobal;	
-	private GraphButton yesButtonGlobal;
-	private GraphButton noButtonGlobal;
+	private final JLabel[] backgroundsGlobal;
+	private final JTextField nameFieldGlobal;
+	private final GraphButton yesButtonGlobal;
+	private final GraphButton noButtonGlobal;
 	private boolean joinGlobalVisible;
 	
 	
-	private JLabel[] backgroundsCreate;
-	private JTextField nameFieldCreate;
-	private JTextField portFieldCreate;
-	private GraphButton yesButtonCreate;
-	private GraphButton noButtonCreate;
+	private final JLabel[] backgroundsCreate;
+	private final JTextField nameFieldCreate;
+	private final JTextField portFieldCreate;
+	private final GraphButton yesButtonCreate;
+	private final GraphButton noButtonCreate;
 	private boolean createVisible;
 	
 	
-	private JLabel[] backgroundsJoin;
-	private JTextField nameFieldJoin;
-	private JTextField portFieldJoin;
-	private JTextField ipFieldJoin;
-	private GraphButton yesButtonJoin;
-	private GraphButton noButtonJoin;
+	private final JLabel[] backgroundsJoin;
+	private final JTextField nameFieldJoin;
+	private final JTextField portFieldJoin;
+	private final JTextField ipFieldJoin;
+	private final GraphButton yesButtonJoin;
+	private final GraphButton noButtonJoin;
 	private boolean joinVisible;
 	
-	private static Font font = new Font("Sans", Font.BOLD, 12);
+	private final static Font font = new Font("Sans", Font.BOLD, 12);
 	
 	public MainMenuScreen(Graphwar graphwar, String confFile) throws InterruptedException, IOException
 	{
@@ -200,7 +200,7 @@ public class MainMenuScreen extends JPanel implements ActionListener
 	
 	private void addComponentsReversed(JPanel panel, Stack<Component> components)
 	{	
-    	while(components.empty() == false)
+    	while(!components.empty())
     	{
     		panel.add(components.pop());
     	}
@@ -287,7 +287,7 @@ public class MainMenuScreen extends JPanel implements ActionListener
 		showMessage = true;
 		this.message = message;
 		
-		FontMetrics fontMetrics = Toolkit.getDefaultToolkit().getFontMetrics (Constants.NAME_FONT);		
+		FontMetrics fontMetrics = Toolkit.getDefaultToolkit().getFontMetrics(Constants.NAME_FONT);
 		int messageLength = fontMetrics.stringWidth(message);
 		
 		this.messageX = (Constants.WIDTH - messageLength)/2;
@@ -328,7 +328,7 @@ public class MainMenuScreen extends JPanel implements ActionListener
 			{
 				String name = nameFieldGlobal.getText();
 					
-				if(name!=null && name.length()>0)
+				if(name!=null && !name.isEmpty())
 				{
 					if(name.length() > 20)
 					{
@@ -369,7 +369,7 @@ public class MainMenuScreen extends JPanel implements ActionListener
 					String name = nameFieldCreate.getText();
 					int port = Integer.parseInt(portFieldCreate.getText());
 					
-					if(name!=null && name.length()!=0)
+					if(name!=null && !name.isEmpty())
 					{
 						if(name.length() > 20)
 						{
@@ -417,7 +417,7 @@ public class MainMenuScreen extends JPanel implements ActionListener
 					String ip = ipFieldJoin.getText();
 					int port = Integer.parseInt(portFieldJoin.getText());
 					
-					if(name!=null && name.length()>0 && ip!=null && ip.length()>0)
+					if(name!=null && !name.isEmpty() && ip!=null && !ip.isEmpty())
 					{
 						if(name.length() > 20)
 						{

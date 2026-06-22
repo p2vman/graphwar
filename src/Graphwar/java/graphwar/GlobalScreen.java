@@ -29,35 +29,35 @@ import java.util.Stack;
 
 public class GlobalScreen extends JPanel implements ActionListener, StartStopPanel
 {
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
-	private JLabel[] backgroundImages;
+	private final JLabel[] backgroundImages;
 	
 	private String message;
 	private int messageX;
 	private boolean showMessage;	
 	
-	private GraphButton createButton;
-	private GraphButton gameRoomButton;
-	private GraphButton backButton;	
-	private JTextField chatField;	
-	private GraphTextBox chatBox;
-	private GlobalPlayerBoard playerBoard;
-	private RoomBoard roomBoard;
+	private final GraphButton createButton;
+	private final GraphButton gameRoomButton;
+	private final GraphButton backButton;
+	private final JTextField chatField;
+	private final GraphTextBox chatBox;
+	private final GlobalPlayerBoard playerBoard;
+	private final RoomBoard roomBoard;
 
-	private JLabel[] backgroundsCreate;
-	private JTextField nameFieldCreate;
-	private JTextField portFieldCreate;
-	private GraphButton yesButtonCreate;
-	private GraphButton noButtonCreate;
+	private final JLabel[] backgroundsCreate;
+	private final JTextField nameFieldCreate;
+	private final JTextField portFieldCreate;
+	private final GraphButton yesButtonCreate;
+	private final GraphButton noButtonCreate;
 	private boolean createVisible;
 		
-	private JLabel[] backgroundsShowMessage;
-	private GraphButton okButton;
-	private JLabel messageLabel;
+	private final JLabel[] backgroundsShowMessage;
+	private final GraphButton okButton;
+	private final JLabel messageLabel;
 	private boolean showMessageVisible;
 		
-	private static Font font = new Font("Sans", Font.BOLD, 12);
+	private final static Font font = new Font("Sans", Font.BOLD, 12);
 		
 	public GlobalScreen(Graphwar graphwar, String confFile) throws InterruptedException, IOException
 	{
@@ -90,7 +90,7 @@ public class GlobalScreen extends JPanel implements ActionListener, StartStopPan
 			backButton = GraphUtil.makeButton(graphwar, read);
 			chatField = GraphUtil.makeTextField(read);			
 			chatBox = GraphUtil.makeTextBox(read);
-			
+
 			playerBoard = new GlobalPlayerBoard(graphwar, 180, 367);
 			playerBoard.setPreferredSize(new Dimension(180,367));			
 			JScrollPane playerPane = new JScrollPane(playerBoard);
@@ -186,7 +186,7 @@ public class GlobalScreen extends JPanel implements ActionListener, StartStopPan
 
 	private void addComponentsReversed(JPanel panel, Stack<Component> components)
 	{	
-    	while(components.empty() == false)
+    	while(!components.empty())
     	{
     		panel.add(components.pop());
     	}

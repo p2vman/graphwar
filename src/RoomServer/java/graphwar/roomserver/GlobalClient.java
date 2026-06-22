@@ -20,6 +20,7 @@ package graphwar.roomserver;
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+import lombok.Getter;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -32,11 +33,13 @@ public class GlobalClient implements Runnable
 	
 	private String localPlayer;
 	
-	private boolean running;	
+	@Getter
+    private boolean running;
 	
 	private boolean roomCreated;
 	private boolean roomHidden;
-	private boolean roomInvalid;
+	@Getter
+    private boolean roomInvalid;
 	private boolean roomListed;
 	private int roomID;
 	private String roomName;
@@ -77,13 +80,8 @@ public class GlobalClient implements Runnable
 		this.running = true;
 		new Thread(this).start();		
 	}
-			
-	public boolean isRoomInvalid()
-	{
-		return roomInvalid;
-	}
-	
-	public boolean isRoomListed()
+
+    public boolean isRoomListed()
 	{
 		boolean timed_out = (System.currentTimeMillis()-last_keep_alive_time) > 10000;
 
@@ -195,7 +193,7 @@ public class GlobalClient implements Runnable
 		
 	public void recreateRoom()
 	{
-		if(this.roomHidden == true)
+		if(this.roomHidden)
 		{
 			this.roomCreated = true;
 			this.roomHidden = false;
@@ -260,13 +258,8 @@ public class GlobalClient implements Runnable
 				
 		this.connection.sendMessage(message);
 	}
-	
-	public boolean isRunning()
-	{
-		return running;
-	}
 
-	public void stop()
+    public void stop()
 	{
 		quitGlobal();
 		disconnect();		
@@ -284,23 +277,13 @@ public class GlobalClient implements Runnable
 	
 	public boolean checkTimeout()
 	{
-		if(System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP;
+    }
 
 	public boolean checkStayAliveTime()
 	{
-		if(System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE;
+    }
 
 	private void disconnect()
 	{

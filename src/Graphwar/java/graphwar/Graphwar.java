@@ -20,6 +20,7 @@ package graphwar;
 import graphwar.GlobalServers.ServerEntry;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.GraphServer;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -29,8 +30,10 @@ import java.util.List;
 public class Graphwar extends JFrame
 {
 	private GraphServer gameServer;
-	private GameData gameData;
-	private GlobalClient globalClient;
+	@Getter
+    private GameData gameData;
+	@Getter
+    private GlobalClient globalClient;
 	private GraphUI graphUI;
 	
 	public static void main(String[] args)
@@ -64,20 +67,7 @@ public class Graphwar extends JFrame
 	
 	public void init()
 	{
-		copyResourceIfMissing("/game.properties", "game.properties");
 		copyResourceIfMissing("/global_servers.txt", "global_servers.txt");
-
-		java.util.Properties gameProps = new java.util.Properties();
-		java.io.File gf = new java.io.File("game.properties");
-		if (gf.exists()) {
-			try (java.io.FileReader fr = new java.io.FileReader(gf)) { gameProps.load(fr); } catch (Exception e) { e.printStackTrace(); }
-		} else {
-			try (java.io.InputStream in = Graphwar.class.getResourceAsStream("/game.properties")) { if (in != null) gameProps.load(in); } catch (Exception e) { }
-		}
-
-		String defaultName = gameProps.getProperty("defaultName");
-		String serversFile = gameProps.getProperty("serversFile");
-		if (serversFile != null) System.setProperty("global.servers.file", serversFile);
 
 		setTitle("Graphwar");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -92,7 +82,6 @@ public class Graphwar extends JFrame
 		{
 			gameData = new GameData(this);
 			globalClient = new GlobalClient(this);
-			if (defaultName != null) globalClient.setLocalPlayerName(defaultName);
 			graphUI = new GraphUI(this); 		
 		}
 		catch (InterruptedException e) 
@@ -153,18 +142,8 @@ public class Graphwar extends JFrame
 			e.printStackTrace();
 		}
 	}
-	
-	public GameData getGameData()
-	{
-		return gameData;
-	}
-	
-	public GlobalClient getGlobalClient()
-	{
-		return globalClient;
-	}
-	
-	public void finishGame()
+
+    public void finishGame()
 	{
 		if(gameServer != null)
 		{

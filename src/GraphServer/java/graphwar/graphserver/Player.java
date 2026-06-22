@@ -17,18 +17,27 @@
 
 package graphwar.graphserver;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.Random;
 
 public class Player
 {
-	private String name;
-	private int numSoldiers;
-	private int team;	
-	private int playerID;
-	private boolean ready;
+	@Getter
+    private final String name;
+	@Setter
+    @Getter
+    private int numSoldiers;
+	@Getter
+    @Setter
+    private int team;
+	private final int playerID;
+	@Setter
+    private boolean ready;
 	
 	private static int lastID = 0;
-	private static Random random = new Random(System.currentTimeMillis());
+	private final static Random random = new Random(System.currentTimeMillis());
 	
 	public Player(String name)
 	{
@@ -54,39 +63,10 @@ public class Player
 	{
 		return this.ready;
 	}
-	
-	public void setReady(boolean ready)
-	{
-		this.ready = ready;
-	}
-	
-	public String getName()
-	{
-		return this.name;
-	}
-	
-	public int getID()
+
+    public int getID()
 	{
 		return this.playerID;
 	}
-	
-	public void setTeam(int team)
-	{
-		this.team = team;
-	}
-	
-	public int getTeam()
-	{
-		return this.team;
-	}
-	
-	public int getNumSoldiers()
-	{
-		return this.numSoldiers;
-	}
-	
-	public void setNumSoldiers(int numSoldiers)
-	{
-		this.numSoldiers = numSoldiers;
-	}
+
 }

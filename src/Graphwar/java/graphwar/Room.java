@@ -19,12 +19,12 @@ package graphwar;
 
 public class Room 
 {
-	private String name;
-	private int port;
-	private String ip;
+	private final String name;
+	private final int port;
+	private final String ip;
 	private int gameMode;
 	private int numPlayers;
-	private int roomID;
+	private final int roomID;
 	
 	public Room(String name, int roomID, String ip, int port, int mode, int numPlayers)
 	{

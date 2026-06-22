@@ -30,46 +30,46 @@ import java.util.ListIterator;
 
 public class PlayerBoard extends JPanel 
 {	
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
-	private Image switchNormal;
-	private Image switchOver;
-	private Image switchGray;
-	private BufferedImage switchMask;
-	private Image switchNormalMirror;
-	private Image switchOverMirror;
-	private Image switchGrayMirror;
-	private BufferedImage switchMaskMirror;
+	private final Image switchNormal;
+	private final Image switchOver;
+	private final Image switchGray;
+	private final BufferedImage switchMask;
+	private final Image switchNormalMirror;
+	private final Image switchOverMirror;
+	private final Image switchGrayMirror;
+	private final BufferedImage switchMaskMirror;
 	
-	private Image soldierNormal;
-	private Image soldierOver;
-	private Image soldierGhost;
-	private BufferedImage soldierMask;
-	private Image soldierNormalMirror;
-	private Image soldierOverMirror;
-	private Image soldierGhostMirror;
-	private BufferedImage soldierMaskMirror;
+	private final Image soldierNormal;
+	private final Image soldierOver;
+	private final Image soldierGhost;
+	private final BufferedImage soldierMask;
+	private final Image soldierNormalMirror;
+	private final Image soldierOverMirror;
+	private final Image soldierGhostMirror;
+	private final BufferedImage soldierMaskMirror;
 	
-	private Image removeNormal;
-	private Image removeOver;
-	private Image removeGray;
-	private BufferedImage removeMask;
-	private Image removeNormalMirror;
-	private Image removeOverMirror;
-	private Image removeGrayMirror;
-	private BufferedImage removeMaskMirror;
+	private final Image removeNormal;
+	private final Image removeOver;
+	private final Image removeGray;
+	private final BufferedImage removeMask;
+	private final Image removeNormalMirror;
+	private final Image removeOverMirror;
+	private final Image removeGrayMirror;
+	private final BufferedImage removeMaskMirror;
 	
-	private int entryWidth;
-	private int entryHeight;
+	private final int entryWidth;
+	private final int entryHeight;
 	
-	private int team2Offset;
+	private final int team2Offset;
 	
-	private PlayerEntry[] playersEntries;
+	private final PlayerEntry[] playersEntries;
 	private int numPlayers;
 	
-	private class PlayerEntry extends JPanel implements ActionListener, MouseListener
+	private static class PlayerEntry extends JPanel implements ActionListener, MouseListener
 	{
-		private Graphwar graphwar;
+		private final Graphwar graphwar;
 		
 		public Player player;
 		
@@ -77,7 +77,7 @@ public class PlayerBoard extends JPanel
 		public GraphButton[] addSoldier;
 		public GraphButton removePlayer;
 		
-		private int maxNameLength;
+		private final int maxNameLength;
 		
 		public PlayerEntry(	Graphwar graphwar, int width, int height, Player player,
 							Image switchNormal, Image switchOver, BufferedImage switchMask,

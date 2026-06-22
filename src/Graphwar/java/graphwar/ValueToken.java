@@ -18,9 +18,12 @@
 package graphwar;
 
 
+import lombok.Getter;
+
+@Getter
 public class ValueToken extends FunctionToken
 {
-	private double value;
+	private final double value;
 	
 	ValueToken(double value)
 	{
@@ -28,9 +31,5 @@ public class ValueToken extends FunctionToken
 		
 		this.value = value;
 	}
-	
-	public double getValue()
-	{
-		return value;
-	}
+
 }

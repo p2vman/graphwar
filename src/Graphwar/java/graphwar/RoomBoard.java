@@ -29,10 +29,10 @@ import java.util.ListIterator;
 
 public class RoomBoard extends JPanel implements MouseMotionListener, MouseListener
 {
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
-	private int width;
-	private int minHeight;
+	private final int width;
+	private final int minHeight;
 	private int height;
 			
 	private boolean roomFocused;

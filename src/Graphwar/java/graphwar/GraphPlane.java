@@ -33,7 +33,7 @@ import java.util.List;
 
 public class GraphPlane extends JPanel implements ActionListener
 {
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
 	private Image playerDefault;
 	private Image helmetDefault;
@@ -782,7 +782,7 @@ public class GraphPlane extends JPanel implements ActionListener
 	
 	public void startAnimating()
 	{
-		if(this.animating==false)
+		if(!this.animating)
 		{
 			initializeImages();
 			

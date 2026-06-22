@@ -54,15 +54,18 @@ public class GlobalClient implements Runnable
 	private Connection connection;
 	
 	private final List<LobbyPlayer> players;
-	private final List<Room> rooms;
+	@Getter
+    private final List<Room> rooms;
 	
 	private String localPlayer;
 	
-	private boolean running;	
+	@Getter
+    private boolean running;
 	
 	private boolean roomCreated;
 	private boolean roomHidden;
-	private boolean roomInvalid;
+	@Getter
+    private boolean roomInvalid;
 	private String roomName;
 	private int roomPort;
 	
@@ -136,37 +139,21 @@ public class GlobalClient implements Runnable
 		synchronized(players)
 		{
 			names = new String[this.players.size()];
-		
-			ListIterator<LobbyPlayer> itr = players.listIterator();
-		    				
-	    	while(itr.hasNext())
-	    	{
-	    		LobbyPlayer player = itr.next();
-	    		
-	    		if(player.getName().equals("SERVERPEWPEW")==false)
-	    		{
-	    			names[i] = player.getName();
-	    			i++;
-	    		}	    		
-	    	}	
+
+            for (LobbyPlayer player : players) {
+                if (!player.getName().equals("SERVERPEWPEW")) {
+                    names[i] = player.getName();
+                    i++;
+                }
+            }
 		}
     	
     	names = Arrays.copyOf(names, i);
 				
 		return names;
 	}
-	
-	public boolean isRoomInvalid()
-	{
-		return roomInvalid;
-	}
-	
-	public List<Room> getRooms()
-	{
-		return this.rooms;
-	}
-	
-	private void addPlayer(String name, int id)
+
+    private void addPlayer(String name, int id)
 	{
 		LobbyPlayer player = new LobbyPlayer(name, id);
 		
@@ -182,18 +169,13 @@ public class GlobalClient implements Runnable
 	{	
 		synchronized(players)
 		{
-			ListIterator<LobbyPlayer> itr = players.listIterator();
-	    	
-			while(itr.hasNext())
-	    	{
-	    		LobbyPlayer player = itr.next();
-	    		
-	    		if(player.getID() == id)
-	    		{
-	    			players.remove(player);
-	    			break;
-	    		}
-	    	}	
+
+            for (LobbyPlayer player : players) {
+                if (player.getID() == id) {
+                    players.remove(player);
+                    break;
+                }
+            }
 		}
 		
 		((GlobalScreen)graphwar.getUI().getScreen(Constants.GLOBAL_ROOM_SCREEN)).refreshPlayers();	
@@ -201,36 +183,26 @@ public class GlobalClient implements Runnable
 	
 	private void removeRoom(int id)
 	{
-		ListIterator<Room> itr = rooms.listIterator();
-	    	
-		while(itr.hasNext())
-    	{
-			Room room = itr.next();
-    		
-    		if(room.getRoomID() == id)
-    		{
-    			rooms.remove(room);
-    			break;
-    		}
-    	}	
+
+        for (Room room : rooms) {
+            if (room.getRoomID() == id) {
+                rooms.remove(room);
+                break;
+            }
+        }
 		
 		((GlobalScreen)graphwar.getUI().getScreen(Constants.GLOBAL_ROOM_SCREEN)).refreshRooms();
 	}
 	
 	private void updateRoom(int id, int gameMode, int numPlayers)
-	{	
-		ListIterator<Room> itr = rooms.listIterator();
-    	
-		while(itr.hasNext())
-    	{
-			Room room = itr.next();
-    		
-    		if(room.getRoomID() == id)
-    		{
-    			room.updateRoom(numPlayers, gameMode);
-    			break;
-    		}
-    	}	
+	{
+
+        for (Room room : rooms) {
+            if (room.getRoomID() == id) {
+                room.updateRoom(numPlayers, gameMode);
+                break;
+            }
+        }
 		
 		((GlobalScreen)graphwar.getUI().getScreen(Constants.GLOBAL_ROOM_SCREEN)).refreshRooms();
 	}
@@ -250,18 +222,13 @@ public class GlobalClient implements Runnable
 		
 		synchronized(players)
 		{
-			ListIterator<LobbyPlayer> itr = players.listIterator();
-		    	
-			while(itr.hasNext())
-	    	{
-	    		LobbyPlayer player = itr.next();
-	    		
-	    		if(player.getID() == playerId)
-	    		{
-	    			playerName = player.getName();
-	    			break;
-	    		}
-	    	}	
+
+            for (LobbyPlayer player : players) {
+                if (player.getID() == playerId) {
+                    playerName = player.getName();
+                    break;
+                }
+            }
 		}
 			
 		((GlobalScreen)graphwar.getUI().getScreen(Constants.GLOBAL_ROOM_SCREEN)).addChat(playerName, chatMessage);
@@ -459,7 +426,7 @@ public class GlobalClient implements Runnable
 	
 	public void recreateRoom()
 	{
-		if(this.roomHidden == true)
+		if(this.roomHidden)
 		{
 			this.roomCreated = true;
 			this.roomHidden = false;
@@ -522,13 +489,8 @@ public class GlobalClient implements Runnable
 				
 		this.connection.sendMessage(message);
 	}
-	
-	public boolean isRunning()
-	{
-		return running;
-	}
 
-	public void stop()
+    public void stop()
 	{
 		if(roomCreated)
 		{
@@ -554,23 +516,13 @@ public class GlobalClient implements Runnable
 	
 	public boolean checkTimeout()
 	{
-		if(System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP;
+    }
 
 	public boolean checkStayAliveTime()
 	{
-		if(System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE;
+    }
 
 	private void disconnect(boolean kick)
 	{		

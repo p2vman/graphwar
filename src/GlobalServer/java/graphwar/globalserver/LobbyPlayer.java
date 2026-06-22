@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static java.net.URLDecoder.decode;
+
 
 public class LobbyPlayer implements Runnable
 {
@@ -120,7 +122,7 @@ public class LobbyPlayer implements Runnable
 			while (true) {
 				try {
 					incoming = connection.readMessage();
-				} catch (java.net.SocketTimeoutException ste) {
+				} catch (SocketTimeoutException ste) {
 					if (System.currentTimeMillis() - start > Constants.TIMEOUT_DROP) {
 						disconnect();
 						return;
@@ -141,7 +143,7 @@ public class LobbyPlayer implements Runnable
 				break;
 			}
 			try {
-				this.name = java.net.URLDecoder.decode(incoming, "UTF-8");
+				this.name = decode(incoming, "UTF-8");
 			} catch (Exception e) {
 				this.name = incoming;
 			}

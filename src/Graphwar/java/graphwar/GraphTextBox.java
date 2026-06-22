@@ -28,12 +28,12 @@ import java.awt.*;
 
 public class GraphTextBox extends JScrollPane
 {
-	private JTextPane textPane;
+	private final JTextPane textPane;
 	
-	private StyledDocument text;
-	private Style nameStyle;
-	private Style messageStyle;
-	private Style systemStyle;
+	private final StyledDocument text;
+	private final Style nameStyle;
+	private final Style messageStyle;
+	private final Style systemStyle;
 	
 	public GraphTextBox()
 	{

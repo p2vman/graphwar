@@ -28,9 +28,9 @@ public class GraphTimer extends JPanel implements ActionListener
 	
 	private Graphwar graphwar;
 	
-	private Timer timer;
+	private final Timer timer;
 
-	private static Font font = new Font("Sans", Font.BOLD, 18);
+	private final static Font font = new Font("Sans", Font.BOLD, 18);
 		
 	public GraphTimer(Graphwar graphwar)
 	{
@@ -71,7 +71,7 @@ public class GraphTimer extends JPanel implements ActionListener
 	
 	public void startRunning()
 	{
-		if(this.running == false)
+		if(!this.running)
 		{
 			this.running = true;
 			

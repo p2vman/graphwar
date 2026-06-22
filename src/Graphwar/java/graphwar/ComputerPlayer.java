@@ -83,14 +83,7 @@ public class ComputerPlayer extends Player implements Runnable
 		this.graphwar = graphwar;
 		
 		this.numGenerations = level;
-		if(level > 9000)
-		{
-			over9000 = true;
-		}
-		else
-		{
-			over9000 = false;
-		}
+        over9000 = level > 9000;
 		this.numFunctions = Constants.NUM_FUNCTIONS_AI;
 		
 		bestFunction = new EvolvableFunction[Constants.MAX_SOLDIERS_PER_PLAYER];
@@ -133,7 +126,7 @@ public class ComputerPlayer extends Player implements Runnable
     		myTurn = true;
     	}
     	
-    	if(processingFunction == false)
+    	if(!processingFunction)
     	{
     		processingFunction = true;
     	
@@ -160,15 +153,8 @@ public class ComputerPlayer extends Player implements Runnable
     	int numPlayers = players.length;
     	
     	boolean inverted;
-    	
-    	if(this.team==Constants.TEAM1)
-		{
-    		inverted = false;
-		}
-		else
-		{
-			inverted = true;	
-		}
+
+        inverted = this.team != Constants.TEAM1;
     	
 		switch(graphwar.getGameData().getGameMode())
 		{
@@ -219,18 +205,18 @@ public class ComputerPlayer extends Player implements Runnable
 		    			for(int k=0; k<func.getNumSteps(); k++)
 		    			{
 		    				double distX;
-							double distY = (-Constants.PLANE_LENGTH*func.getY(k)/Constants.PLANE_GAME_LENGTH + Constants.PLANE_HEIGHT/2) - players[i].getSoldiers()[j].getY();
+							double distY = (-Constants.PLANE_LENGTH*func.getY(k)/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_HEIGHT /2) - players[i].getSoldiers()[j].getY();
 							
 							if(this.team==Constants.TEAM2)
 							{
-								distX = Constants.PLANE_LENGTH - (Constants.PLANE_LENGTH*func.getX(k)/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2) - players[i].getSoldiers()[j].getX();
+								distX = Constants.PLANE_LENGTH - (Constants.PLANE_LENGTH*func.getX(k)/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2) - players[i].getSoldiers()[j].getX();
 							
 								if(distX < 0)
 									continue;
 							}
 							else
 							{
-								distX = (Constants.PLANE_LENGTH*func.getX(k)/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2) - players[i].getSoldiers()[j].getX();
+								distX = (Constants.PLANE_LENGTH*func.getX(k)/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2) - players[i].getSoldiers()[j].getX();
 							
 								if(distX > 0)
 									continue;
@@ -281,10 +267,9 @@ public class ComputerPlayer extends Player implements Runnable
     {
     	double totalPoints = 0;
 
-    	for(int i=0; i<functions.length; i++)
-    	{
-    		totalPoints += functions[i].points;
-    	}
+        for (EvolvableFunction evolvableFunction : functions) {
+            totalPoints += evolvableFunction.points;
+        }
     	
     	return totalPoints;
     }
@@ -322,12 +307,9 @@ public class ComputerPlayer extends Player implements Runnable
 	    	EvolvableFunction[] newFunctions = new EvolvableFunction[numFunctions];
 	    	
 	    	totalPoints = getTotalPoints(functions);
-	    	
-	    	for(int i=0; i<Constants.NUM_FUNCTIONS_UNCHANGED_TURN_AI; i++)
-	    	{
-	    		//newFunctions[i] = functions[getFunctionToReproduce(functions, totalPoints)];
-	    		newFunctions[i] = functions[i];
-	    	}
+
+            //newFunctions[i] = functions[getFunctionToReproduce(functions, totalPoints)];
+            System.arraycopy(functions, 0, newFunctions, 0, Constants.NUM_FUNCTIONS_UNCHANGED_TURN_AI);
 	    	
 	    	for(int i=Constants.NUM_FUNCTIONS_UNCHANGED_TURN_AI; i<Constants.NUM_FUNCTIONS_UNCHANGED_TURN_AI+Constants.NUM_FUNCTION_MUTATED_AI; i++)
 	    	{
@@ -394,9 +376,8 @@ public class ComputerPlayer extends Player implements Runnable
 	    	functions = newFunctions;
 	    	
 	    	for(int i=0; i<numFunctions; i++)
-	    	{   
-	    		double points = evaluateFunction(functions[i].function,functions[i].angle);	    
-	    		functions[i].points = points;
+	    	{
+                functions[i].points = evaluateFunction(functions[i].function,functions[i].angle);
 	    		
 	    		//System.out.print("|");
 	    		
@@ -430,7 +411,7 @@ public class ComputerPlayer extends Player implements Runnable
 		//bestFunction[this.currentSoldierTurn] =  functions[getFunctionToReproduce(functions, totalPoints)];	    	
 	    if(processingFunction)
 	    {
-			if(over9000 == false)
+			if(!over9000)
 			{
 				bestFunction[this.currentTurnSoldier] =  functions[0];			
 				sendFunction();				

@@ -17,6 +17,9 @@
 
 package graphwar;
 
+import lombok.Getter;
+
+@Getter
 public class FunctionToken
 {	
 	public static final int ADD = 1;
@@ -38,15 +41,11 @@ public class FunctionToken
 	public static final int LEFT_BRACKET = 17;
 	public static final int RIGHT_BRACKET = 18;
 		
-	private int type;		
+	private final int type;
 
 	FunctionToken(int type)
 	{
 		this.type = type;
 	}
-	
-	public int getType()
-	{
-		return type;
-	}
+
 }

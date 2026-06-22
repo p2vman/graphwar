@@ -20,12 +20,15 @@ package graphwar.graphserver;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -40,8 +43,8 @@ import java.util.concurrent.TimeUnit;
 public class GraphServer implements Runnable
 {
 	private final int port;
-	protected List<ClientConnection> clients;
-	protected List<Player> players;
+	protected ObjectList<ClientConnection> clients;
+	protected ObjectList<Player> players;
 	protected boolean acceptingConnections;
 	protected int gameMode;
 	protected int gameState;
@@ -52,14 +55,14 @@ public class GraphServer implements Runnable
 
 	private final static Random random = new SecureRandom();
 
-	private NioEventLoopGroup bossGroup;
-	private NioEventLoopGroup workerGroup;
+	private EventLoopGroup bossGroup;
+	private EventLoopGroup workerGroup;
 	private Channel serverChannel;
 
 	public GraphServer(int port) throws IOException
 	{
-		clients  = new ArrayList<ClientConnection>();
-		players  = new ArrayList<Player>();
+		clients  = new ObjectArrayList<>();
+		players  = new ObjectArrayList<>();
 
 		this.port = port;
 
@@ -81,8 +84,8 @@ public class GraphServer implements Runnable
 	{
 		acceptingConnections = true;
 
-		bossGroup   = new NioEventLoopGroup(1);
-		workerGroup = new NioEventLoopGroup();
+		bossGroup   = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
+		workerGroup =new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
 
 		try
 		{
@@ -158,13 +161,9 @@ public class GraphServer implements Runnable
 		String message = NetworkProtocol.DISCONNECT + "";
 		sendMessageAll(message);
 
-		ListIterator<ClientConnection> itr = clients.listIterator();
-
-		while (itr.hasNext())
-		{
-			ClientConnection client = itr.next();
-			client.disconnect();
-		}
+        for (ClientConnection client : clients) {
+            client.disconnect();
+        }
 
 		stopListening();
 	}
@@ -181,7 +180,7 @@ public class GraphServer implements Runnable
 
 		if (clients.size() < Constants.MAX_CLIENTS)
 		{
-			if (clients.size() == 0)
+			if (clients.isEmpty())
 			{
 				client.setLeader(true);
 			}
@@ -205,13 +204,10 @@ public class GraphServer implements Runnable
 
 	private void sendMessageAll(String message)
 	{
-		ListIterator<ClientConnection> itr = clients.listIterator();
 
-		while (itr.hasNext())
-		{
-			ClientConnection client = itr.next();
-			client.sendMessage(message);
-		}
+        for (ClientConnection client : clients) {
+            client.sendMessage(message);
+        }
 	}
 
 	private void sendLeaderMessage(ClientConnection client)
@@ -222,39 +218,28 @@ public class GraphServer implements Runnable
 
 	private void sendAllInfoMessage(ClientConnection client)
 	{
-		ListIterator<ClientConnection> itr = clients.listIterator();
 
-		while (itr.hasNext())
-		{
-			ClientConnection tmpClient = itr.next();
+        for (ClientConnection tmpClient : clients) {
+            List<Player> players = tmpClient.getPlayers();
 
-			List<Player> players = tmpClient.getPlayers();
+            for (Player player : players) {
+                String message;
 
-			ListIterator<Player> pitr = players.listIterator();
+                int local = 0;
+                if (client == tmpClient) {
+                    local = 1;
+                }
 
-			while (pitr.hasNext())
-			{
-				Player player = pitr.next();
+                int ready = 0;
+                if (player.getReady()) {
+                    ready = 1;
+                }
 
-				String message;
+                message = NetworkProtocol.ADD_PLAYER + "&" + player.getID() + "&" + player.getName() + "&" + player.getTeam() + "&" + local + "&" + player.getNumSoldiers() + "&" + ready;
 
-				int local = 0;
-				if (client == tmpClient)
-				{
-					local = 1;
-				}
-
-				int ready = 0;
-				if (player.getReady() == true)
-				{
-					ready = 1;
-				}
-
-				message = NetworkProtocol.ADD_PLAYER + "&" + player.getID() + "&" + player.getName() + "&" + player.getTeam() + "&" + local + "&" + player.getNumSoldiers() + "&" + ready;
-
-				client.sendMessage(message);
-			}
-		}
+                client.sendMessage(message);
+            }
+        }
 
 		String message = NetworkProtocol.SET_MODE + "&" + gameMode;
 		client.sendMessage(message);
@@ -262,72 +247,50 @@ public class GraphServer implements Runnable
 
 	protected void sendAddPlayerMessage(Player player, ClientConnection playerFrom)
 	{
-		ListIterator<ClientConnection> itr = clients.listIterator();
 
-		while (itr.hasNext())
-		{
-			ClientConnection client = itr.next();
+        for (ClientConnection client : clients) {
+            String message;
 
-			String message;
+            int local = 0;
+            if (client == playerFrom) {
+                local = 1;
+            }
 
-			int local = 0;
-			if (client == playerFrom)
-			{
-				local = 1;
-			}
+            int ready = 0;
+            if (player.getReady()) {
+                ready = 1;
+            }
 
-			int ready = 0;
-			if (player.getReady() == true)
-			{
-				ready = 1;
-			}
+            message = NetworkProtocol.ADD_PLAYER + "&" + player.getID() + "&" + player.getName() + "&" + player.getTeam() + "&" + local + "&" + player.getNumSoldiers() + "&" + ready;
 
-			message = NetworkProtocol.ADD_PLAYER + "&" + player.getID() + "&" + player.getName() + "&" + player.getTeam() + "&" + local + "&" + player.getNumSoldiers() + "&" + ready;
-
-			client.sendMessage(message);
-		}
+            client.sendMessage(message);
+        }
 	}
 
 	private boolean setTeam(int team, int playerID, ClientConnection client)
 	{
 		List<Player> players = client.getPlayers();
 
-		ListIterator<Player> itr = players.listIterator();
-
-		while (itr.hasNext())
-		{
-			Player player = itr.next();
-
-			if (player.getID() == playerID)
-			{
-				player.setTeam(team);
-				return true;
-			}
-		}
+        for (Player player : players) {
+            if (player.getID() == playerID) {
+                player.setTeam(team);
+                return true;
+            }
+        }
 
 		if (client.isLeader())
 		{
-			ListIterator<ClientConnection> citr = clients.listIterator();
 
-			while (citr.hasNext())
-			{
-				ClientConnection tmpClient = citr.next();
+            for (ClientConnection tmpClient : clients) {
+                List<Player> tmpPlayers = tmpClient.getPlayers();
 
-				List<Player> tmpPlayers = tmpClient.getPlayers();
-
-				ListIterator<Player> pitr = tmpPlayers.listIterator();
-
-				while (pitr.hasNext())
-				{
-					Player player = pitr.next();
-
-					if (player.getID() == playerID)
-					{
-						player.setTeam(team);
-						return true;
-					}
-				}
-			}
+                for (Player player : tmpPlayers) {
+                    if (player.getID() == playerID) {
+                        player.setTeam(team);
+                        return true;
+                    }
+                }
+            }
 		}
 
 		return false;
@@ -337,44 +300,28 @@ public class GraphServer implements Runnable
 	{
 		List<Player> clientPlayers = client.getPlayers();
 
-		ListIterator<Player> itr = clientPlayers.listIterator();
-
-		while (itr.hasNext())
-		{
-			Player player = itr.next();
-
-			if (player.getID() == playerID)
-			{
-				client.removePlayer(player);
-				players.remove(player);
-				return true;
-			}
-		}
+        for (Player player : clientPlayers) {
+            if (player.getID() == playerID) {
+                client.removePlayer(player);
+                players.remove(player);
+                return true;
+            }
+        }
 
 		if (client.isLeader())
 		{
-			ListIterator<ClientConnection> citr = clients.listIterator();
 
-			while (citr.hasNext())
-			{
-				ClientConnection tmpClient = citr.next();
+            for (ClientConnection tmpClient : clients) {
+                List<Player> tmpPlayers = tmpClient.getPlayers();
 
-				List<Player> tmpPlayers = tmpClient.getPlayers();
-
-				ListIterator<Player> pitr = tmpPlayers.listIterator();
-
-				while (pitr.hasNext())
-				{
-					Player player = pitr.next();
-
-					if (player.getID() == playerID)
-					{
-						tmpClient.removePlayer(player);
-						players.remove(player);
-						return true;
-					}
-				}
-			}
+                for (Player player : tmpPlayers) {
+                    if (player.getID() == playerID) {
+                        tmpClient.removePlayer(player);
+                        players.remove(player);
+                        return true;
+                    }
+                }
+            }
 		}
 
 		return false;
@@ -384,27 +331,19 @@ public class GraphServer implements Runnable
 	{
 		List<Player> players = client.getPlayers();
 
-		ListIterator<Player> itr = players.listIterator();
+        for (Player player : players) {
+            if (player.getID() == playerID) {
+                player.setReady(ready);
 
-		while (itr.hasNext())
-		{
-			Player player = itr.next();
+                if (!ready) {
+                    if (startDelayer != null) {
+                        startDelayer.stop();
+                    }
+                }
 
-			if (player.getID() == playerID)
-			{
-				player.setReady(ready);
-
-				if (ready == false)
-				{
-					if (startDelayer != null)
-					{
-						startDelayer.stop();
-					}
-				}
-
-				return true;
-			}
-		}
+                return true;
+            }
+        }
 
 		return false;
 	}
@@ -413,56 +352,38 @@ public class GraphServer implements Runnable
 	{
 		List<Player> players = client.getPlayers();
 
-		ListIterator<Player> itr = players.listIterator();
+        for (Player player : players) {
+            if (player.getID() == playerID) {
+                int newNum = player.getNumSoldiers() + 1;
 
-		while (itr.hasNext())
-		{
-			Player player = itr.next();
+                if (newNum <= Constants.MAX_SOLDIERS_PER_PLAYER) {
+                    player.setNumSoldiers(newNum);
+                    return true;
+                }
 
-			if (player.getID() == playerID)
-			{
-				int newNum = player.getNumSoldiers() + 1;
-
-				if (newNum <= Constants.MAX_SOLDIERS_PER_PLAYER)
-				{
-					player.setNumSoldiers(newNum);
-					return true;
-				}
-
-				break;
-			}
-		}
+                break;
+            }
+        }
 
 		if (client.isLeader())
 		{
-			ListIterator<ClientConnection> citr = clients.listIterator();
 
-			while (citr.hasNext())
-			{
-				ClientConnection tmpClient = citr.next();
+            for (ClientConnection tmpClient : clients) {
+                players = tmpClient.getPlayers();
 
-				players = tmpClient.getPlayers();
+                for (Player player : players) {
+                    if (player.getID() == playerID) {
+                        int newNum = player.getNumSoldiers() + 1;
 
-				ListIterator<Player> pitr = players.listIterator();
+                        if (newNum <= Constants.MAX_SOLDIERS_PER_PLAYER) {
+                            player.setNumSoldiers(newNum);
+                            return true;
+                        }
 
-				while (pitr.hasNext())
-				{
-					Player player = pitr.next();
-
-					if (player.getID() == playerID)
-					{
-						int newNum = player.getNumSoldiers() + 1;
-
-						if (newNum <= Constants.MAX_SOLDIERS_PER_PLAYER)
-						{
-							player.setNumSoldiers(newNum);
-							return true;
-						}
-
-						break;
-					}
-				}
-			}
+                        break;
+                    }
+                }
+            }
 		}
 
 		return false;
@@ -472,56 +393,38 @@ public class GraphServer implements Runnable
 	{
 		List<Player> players = client.getPlayers();
 
-		ListIterator<Player> itr = players.listIterator();
+        for (Player player : players) {
+            if (player.getID() == playerID) {
+                int newNum = player.getNumSoldiers() - 1;
 
-		while (itr.hasNext())
-		{
-			Player player = itr.next();
+                if (newNum >= 0) {
+                    player.setNumSoldiers(newNum);
+                    return true;
+                }
 
-			if (player.getID() == playerID)
-			{
-				int newNum = player.getNumSoldiers() - 1;
-
-				if (newNum >= 0)
-				{
-					player.setNumSoldiers(newNum);
-					return true;
-				}
-
-				break;
-			}
-		}
+                break;
+            }
+        }
 
 		if (client.isLeader())
 		{
-			ListIterator<ClientConnection> citr = clients.listIterator();
 
-			while (citr.hasNext())
-			{
-				ClientConnection tmpClient = citr.next();
+            for (ClientConnection tmpClient : clients) {
+                players = tmpClient.getPlayers();
 
-				players = tmpClient.getPlayers();
+                for (Player player : players) {
+                    if (player.getID() == playerID) {
+                        int newNum = player.getNumSoldiers() - 1;
 
-				ListIterator<Player> pitr = players.listIterator();
+                        if (newNum >= 0) {
+                            player.setNumSoldiers(newNum);
+                            return true;
+                        }
 
-				while (pitr.hasNext())
-				{
-					Player player = pitr.next();
-
-					if (player.getID() == playerID)
-					{
-						int newNum = player.getNumSoldiers() - 1;
-
-						if (newNum >= 0)
-						{
-							player.setNumSoldiers(newNum);
-							return true;
-						}
-
-						break;
-					}
-				}
-			}
+                        break;
+                    }
+                }
+            }
 		}
 
 		return false;
@@ -534,48 +437,31 @@ public class GraphServer implements Runnable
 			startDelayer.stop();
 		}
 
-		ListIterator<ClientConnection> itr = clients.listIterator();
+        for (ClientConnection tmpClient : clients) {
+            List<Player> players = tmpClient.getPlayers();
 
-		while (itr.hasNext())
-		{
-			ClientConnection tmpClient = itr.next();
+            for (Player player : players) {
+                if (player.getReady()) {
+                    player.setReady(false);
 
-			List<Player> players = tmpClient.getPlayers();
+                    String message;
+                    message = NetworkProtocol.SET_READY + "&" + player.getID() + "&" + 0;
 
-			ListIterator<Player> pitr = players.listIterator();
-
-			while (pitr.hasNext())
-			{
-				Player player = pitr.next();
-
-				if (player.getReady() == true)
-				{
-					player.setReady(false);
-
-					String message;
-					message = NetworkProtocol.SET_READY + "&" + player.getID() + "&" + 0;
-
-					sendMessageAll(message);
-				}
-			}
-		}
+                    sendMessageAll(message);
+                }
+            }
+        }
 	}
 
 	private boolean checkPlayer(int playerID, ClientConnection client)
 	{
 		List<Player> players = client.getPlayers();
 
-		ListIterator<Player> itr = players.listIterator();
-
-		while (itr.hasNext())
-		{
-			Player player = itr.next();
-
-			if (player.getID() == playerID)
-			{
-				return true;
-			}
-		}
+        for (Player player : players) {
+            if (player.getID() == playerID) {
+                return true;
+            }
+        }
 
 		return false;
 	}
@@ -588,26 +474,16 @@ public class GraphServer implements Runnable
 
 	private boolean checkAllReady()
 	{
-		ListIterator<ClientConnection> itr = clients.listIterator();
 
-		while (itr.hasNext())
-		{
-			ClientConnection tmpClient = itr.next();
+        for (ClientConnection tmpClient : clients) {
+            List<Player> players = tmpClient.getPlayers();
 
-			List<Player> players = tmpClient.getPlayers();
-
-			ListIterator<Player> pitr = players.listIterator();
-
-			while (pitr.hasNext())
-			{
-				Player player = pitr.next();
-
-				if (player.getReady() == false)
-				{
-					return false;
-				}
-			}
-		}
+            for (Player player : players) {
+                if (!player.getReady()) {
+                    return false;
+                }
+            }
+        }
 
 		return true;
 	}
@@ -618,19 +494,14 @@ public class GraphServer implements Runnable
 
 		List<Player> clientPlayers = client.getPlayers();
 
-		ListIterator<Player> itr = clientPlayers.listIterator();
+        for (Player player : clientPlayers) {
+            String message = NetworkProtocol.REMOVE_PLAYER + "&" + player.getID();
+            sendMessageAll(message);
 
-		while (itr.hasNext())
-		{
-			Player player = itr.next();
+            players.remove(player);
+        }
 
-			String message = NetworkProtocol.REMOVE_PLAYER + "&" + player.getID();
-			sendMessageAll(message);
-
-			players.remove(player);
-		}
-
-		if (clients.isEmpty() == false)
+		if (!clients.isEmpty())
 		{
 			if (client.isLeader())
 			{
@@ -651,24 +522,22 @@ public class GraphServer implements Runnable
 			numCircles = 1;
 		}
 
-		int circles[] = new int[3 * numCircles];
+		int[] circles = new int[3 * numCircles];
 
 		for (int i = 0; i < numCircles; i++)
 		{
 			circles[3 * i]     = random.nextInt(Constants.PLANE_LENGTH);
 			circles[3 * i + 1] = random.nextInt(Constants.PLANE_HEIGHT);
-			circles[3 * i + 2] = (int) (random.nextGaussian() * Constants.CIRCLE_STANDARD_DEVIATION + Constants.CIRCLE_MEAN_RADIUS);
 
-			while (circles[3 * i + 2] < 0)
-			{
-				circles[3 * i + 2] = (int) (random.nextGaussian() * Constants.CIRCLE_STANDARD_DEVIATION + Constants.CIRCLE_MEAN_RADIUS);
-			}
+            do {
+                circles[3 * i + 2] = (int) (random.nextGaussian() * Constants.CIRCLE_STANDARD_DEVIATION + Constants.CIRCLE_MEAN_RADIUS);
+            } while (circles[3 * i + 2] < 0);
 		}
 
 		return circles;
 	}
 
-	private class Soldier
+	private static class Soldier
 	{
 		public int x;
 		public int y;
@@ -687,17 +556,12 @@ public class GraphServer implements Runnable
 
 	private boolean testSoldier(Soldier soldier, List<Soldier> soldiers, int[] circles)
 	{
-		ListIterator<Soldier> itr = soldiers.listIterator();
 
-		while (itr.hasNext())
-		{
-			Soldier tempSoldier = itr.next();
-
-			if (Math.abs(soldier.x - tempSoldier.x) < 20 && Math.abs(soldier.y - tempSoldier.y) < 20)
-			{
-				return false;
-			}
-		}
+        for (Soldier tempSoldier : soldiers) {
+            if (Math.abs(soldier.x - tempSoldier.x) < 20 && Math.abs(soldier.y - tempSoldier.y) < 20) {
+                return false;
+            }
+        }
 
 		int numCircles = circles.length / 3;
 		for (int i = 0; i < numCircles; i++)
@@ -728,7 +592,7 @@ public class GraphServer implements Runnable
 			soldier = new Soldier(x, y);
 
 		}
-		while (testSoldier(soldier, soldiers, circles) == false);
+		while (!testSoldier(soldier, soldiers, circles));
 
 		return soldier;
 	}
@@ -737,18 +601,12 @@ public class GraphServer implements Runnable
 	{
 		List<Soldier> soldiers = new ArrayList<Soldier>();
 
-		ListIterator<Player> pitr = players.listIterator();
-
-		while (pitr.hasNext())
-		{
-			Player player = pitr.next();
-
-			for (int i = 0; i < player.getNumSoldiers(); i++)
-			{
-				Soldier soldier = generateSoldier(soldiers, circles, player.getTeam());
-				soldiers.add(soldier);
-			}
-		}
+        for (Player player : players) {
+            for (int i = 0; i < player.getNumSoldiers(); i++) {
+                Soldier soldier = generateSoldier(soldiers, circles, player.getTeam());
+                soldiers.add(soldier);
+            }
+        }
 
 		int[] soldiersPos = new int[soldiers.size() * 2];
 
@@ -812,7 +670,7 @@ public class GraphServer implements Runnable
 
 	private void sendStartCountDown()
 	{
-		if (countingDown == false)
+		if (!countingDown)
 		{
 			countingDown = true;
 
@@ -825,7 +683,7 @@ public class GraphServer implements Runnable
 
 	private void reorderPlayers()
 	{
-		List<Player> newPlayers = new ArrayList<Player>();
+		ObjectList<Player> newPlayers = new ObjectArrayList<>();
 
 		int currentTeam = Constants.TEAM1;
 
@@ -834,7 +692,7 @@ public class GraphServer implements Runnable
 			currentTeam = Constants.TEAM2;
 		}
 
-		while (players.size() > 0)
+		while (!players.isEmpty())
 		{
 			ListIterator<Player> pitr = players.listIterator();
 
@@ -863,7 +721,7 @@ public class GraphServer implements Runnable
 				}
 			}
 
-			if (found == false)
+			if (!found)
 			{
 				if (currentTeam == Constants.TEAM1)
 				{
@@ -880,14 +738,9 @@ public class GraphServer implements Runnable
 
 		String message = NetworkProtocol.REORDER + "";
 
-		ListIterator<Player> pitr = players.listIterator();
-
-		while (pitr.hasNext())
-		{
-			Player player = pitr.next();
-
-			message = message + "&" + player.getID();
-		}
+        for (Player player : players) {
+            message = message + "&" + player.getID();
+        }
 
 		sendMessageAll(message);
 	}
@@ -910,15 +763,13 @@ public class GraphServer implements Runnable
 
 		String message = NetworkProtocol.START_GAME + "&" + numCircles;
 
-		for (int i = 0; i < circles.length; i++)
-		{
-			message = message + "&" + circles[i];
-		}
+        for (int circle : circles) {
+            message = message + "&" + circle;
+        }
 
-		for (int i = 0; i < soldiers.length; i++)
-		{
-			message = message + "&" + soldiers[i];
-		}
+        for (int soldier : soldiers) {
+            message = message + "&" + soldier;
+        }
 
 		int startPlayer = Math.abs(random.nextInt() % players.size());
 
@@ -939,31 +790,22 @@ public class GraphServer implements Runnable
 
 	private void checkNextTurn()
 	{
-		ListIterator<ClientConnection> itr = clients.listIterator();
 
-		while (itr.hasNext())
-		{
-			ClientConnection client = itr.next();
-
-			if (client.getReadyNextTurn() == false)
-			{
-				return;
-			}
-		}
+        for (ClientConnection client : clients) {
+            if (!client.getReadyNextTurn()) {
+                return;
+            }
+        }
 
 		nextTurn();
 	}
 
 	private void nextTurn()
 	{
-		ListIterator<ClientConnection> itr = clients.listIterator();
 
-		while (itr.hasNext())
-		{
-			ClientConnection client = itr.next();
-
-			client.setReadyNextTurn(false);
-		}
+        for (ClientConnection client : clients) {
+            client.setReadyNextTurn(false);
+        }
 
 		String message = NetworkProtocol.NEXT_TURN + "";
 		sendMessageAll(message);
@@ -981,7 +823,7 @@ public class GraphServer implements Runnable
 		{
 			ClientConnection tempClient = itr.next();
 
-			if (tempClient.isFinished() == false)
+			if (!tempClient.isFinished())
 			{
 				return;
 			}
@@ -1026,7 +868,7 @@ public class GraphServer implements Runnable
 		{
 			ClientConnection client = itr.next();
 
-			if (client.getSkipLevel() == false)
+			if (!client.getSkipLevel())
 			{
 				return;
 			}

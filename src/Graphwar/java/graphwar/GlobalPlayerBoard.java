@@ -23,10 +23,10 @@ import java.awt.*;
 
 public class GlobalPlayerBoard extends JPanel 
 {
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
-	private int width;
-	private int minHeight;
+	private final int width;
+	private final int minHeight;
 	
 	private final int entryHeight = 20;
 	

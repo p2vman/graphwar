@@ -17,6 +17,7 @@
 package graphwar;
 
 import graphwar.graphserver.Constants;
+import lombok.Getter;
 
 public class Function
 {
@@ -24,19 +25,24 @@ public class Function
 	private final PolishNotationFunction polishFunc;
 	private double offSet;
 	
-	private double fireAngle;
+	@Getter
+    private double fireAngle;
 	private double[] valuesX;
 	private double[] valuesY;
 	private double[] valuesDY;
-	private int numSteps;
+	@Getter
+    private int numSteps;
 	
 	private int[] playersHit;
 	private int[] soldiersHit;
 	private int[] soldierHitPosition;
-	private int numPlayersHit;
+	@Getter
+    private int numPlayersHit;
 	
-	private double lastX;
-	private double lastY;
+	@Getter
+    private double lastX;
+	@Getter
+    private double lastY;
 	
 	Function(String str) throws MalformedFunction
 	{		
@@ -84,13 +90,8 @@ public class Function
 		lastY = 0;		
 		
 	}
-	
-	public int getNumPlayersHit()
-	{
-		return numPlayersHit;
-	}
-	
-	public int getPlayerHit(int index)
+
+    public int getPlayerHit(int index)
 	{
 		return playersHit[index];
 	}
@@ -104,13 +105,8 @@ public class Function
 	{
 		return soldierHitPosition[index];
 	}
-	
-	public double getFireAngle()
-	{
-		return fireAngle;
-	}	
-	
-	public double getX(int index)
+
+    public double getX(int index)
 	{
 		return valuesX[index];
 	}
@@ -119,13 +115,8 @@ public class Function
 	{
 		return valuesY[index];
 	}
-	
-	public int getNumSteps()
-	{
-		return numSteps;
-	}
-	
-	public String getStringFunc()
+
+    public String getStringFunc()
 	{
 		return strFunc;
 	}
@@ -170,7 +161,7 @@ public class Function
 		return false;
 	}
 	
-	public void processFunctionRange(Obstacle obstacle, Player players[], int numPlayers, int currentTurn, boolean inverted)
+	public void processFunctionRange(Obstacle obstacle, Player[] players, int numPlayers, int currentTurn, boolean inverted)
 	{		
 		playersHit = new int[numPlayers*Constants.MAX_SOLDIERS_PER_PLAYER];
 		soldiersHit = new int[numPlayers*Constants.MAX_SOLDIERS_PER_PLAYER];
@@ -190,14 +181,14 @@ public class Function
 			valuesX[0] = Constants.PLANE_LENGTH - valuesX[0];
 		}
 								
-		valuesX[0] = (Constants.PLANE_GAME_LENGTH*(valuesX[0] - Constants.PLANE_LENGTH/2))/Constants.PLANE_LENGTH;
-		valuesY[0] = (Constants.PLANE_GAME_LENGTH*(-valuesY[0] + Constants.PLANE_HEIGHT/2))/Constants.PLANE_LENGTH;
+		valuesX[0] = (Constants.PLANE_GAME_LENGTH*(valuesX[0] - (double) Constants.PLANE_LENGTH /2))/Constants.PLANE_LENGTH;
+		valuesY[0] = (Constants.PLANE_GAME_LENGTH*(-valuesY[0] + (double) Constants.PLANE_HEIGHT /2))/Constants.PLANE_LENGTH;
 		
 		double gameCoordinateRadius = ((double)(Constants.PLANE_GAME_LENGTH*Constants.SOLDIER_RADIUS))/Constants.PLANE_LENGTH;
 				
 		fireAngle = getStartAngle(valuesX[0], gameCoordinateRadius);
 				
-		if(Double.isNaN(fireAngle)==false && Double.isInfinite(fireAngle)==false )
+		if(!Double.isNaN(fireAngle) && !Double.isInfinite(fireAngle))
 		{
 			valuesX[0] = valuesX[0] + gameCoordinateRadius*Math.cos(fireAngle);	
 			valuesY[0] = valuesY[0] + gameCoordinateRadius*Math.sin(fireAngle);
@@ -240,8 +231,8 @@ public class Function
 				break;
 			}
 				
-			double x = Constants.PLANE_LENGTH*valuesX[i]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2;
-			double y = -Constants.PLANE_LENGTH*valuesY[i]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_HEIGHT/2;
+			double x = Constants.PLANE_LENGTH*valuesX[i]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2;
+			double y = -Constants.PLANE_LENGTH*valuesY[i]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_HEIGHT /2;
 		
 			
 			if(inverted)
@@ -271,7 +262,7 @@ public class Function
 											
 						if(distSquared < Constants.SOLDIER_RADIUS*Constants.SOLDIER_RADIUS)
 						{
-							if(playerAlreadyHit(j,k)==false)
+							if(!playerAlreadyHit(j, k))
 							{
 								playersHit[numPlayersHit] = j;
 								soldiersHit[numPlayersHit] = k;
@@ -298,8 +289,8 @@ public class Function
 				
 		}
 		
-		lastX = Constants.PLANE_LENGTH*valuesX[numSteps-1]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2;
-		lastY = -Constants.PLANE_LENGTH*valuesY[numSteps-1]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_HEIGHT/2;
+		lastX = Constants.PLANE_LENGTH*valuesX[numSteps-1]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2;
+		lastY = -Constants.PLANE_LENGTH*valuesY[numSteps-1]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_HEIGHT /2;
 	
 		//for(int i=0; i<valuesX.length; i++)
 		//{			
@@ -342,7 +333,7 @@ public class Function
 		return angle;
 	}
 	
-	public void processRK4Range(Obstacle obstacle, Player players[], int numPlayers, int currentTurn, boolean inverted)
+	public void processRK4Range(Obstacle obstacle, Player[] players, int numPlayers, int currentTurn, boolean inverted)
 	{	
 		playersHit = new int[numPlayers*Constants.MAX_SOLDIERS_PER_PLAYER];
 		soldiersHit = new int[numPlayers*Constants.MAX_SOLDIERS_PER_PLAYER];
@@ -364,8 +355,8 @@ public class Function
 			valuesX[0] = Constants.PLANE_LENGTH - valuesX[0];
 		}
 								
-		valuesX[0] = (Constants.PLANE_GAME_LENGTH*(valuesX[0] - Constants.PLANE_LENGTH/2))/Constants.PLANE_LENGTH;
-		valuesY[0] = (Constants.PLANE_GAME_LENGTH*(-valuesY[0] + Constants.PLANE_HEIGHT/2))/Constants.PLANE_LENGTH;
+		valuesX[0] = (Constants.PLANE_GAME_LENGTH*(valuesX[0] - (double) Constants.PLANE_LENGTH /2))/Constants.PLANE_LENGTH;
+		valuesY[0] = (Constants.PLANE_GAME_LENGTH*(-valuesY[0] + (double) Constants.PLANE_HEIGHT /2))/Constants.PLANE_LENGTH;
 		
 		double gameCoordinateRadius = ((double)(Constants.PLANE_GAME_LENGTH*Constants.SOLDIER_RADIUS))/Constants.PLANE_LENGTH;
 		
@@ -417,8 +408,8 @@ public class Function
 				break;
 			}
 			
-			double x = Constants.PLANE_LENGTH*valuesX[i]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2;
-			double y = -Constants.PLANE_LENGTH*valuesY[i]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_HEIGHT/2;
+			double x = Constants.PLANE_LENGTH*valuesX[i]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2;
+			double y = -Constants.PLANE_LENGTH*valuesY[i]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_HEIGHT /2;
 		
 			
 			if(inverted)
@@ -448,7 +439,7 @@ public class Function
 											
 						if(distSquared < Constants.SOLDIER_RADIUS*Constants.SOLDIER_RADIUS)
 						{
-							if(playerAlreadyHit(j,k)==false)
+							if(!playerAlreadyHit(j, k))
 							{
 								playersHit[numPlayersHit] = j;
 								soldiersHit[numPlayersHit] = k;
@@ -474,12 +465,12 @@ public class Function
 						
 		}
 			
-		lastX = Constants.PLANE_LENGTH*valuesX[numSteps-1]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2;;
-		lastY = -Constants.PLANE_LENGTH*valuesY[numSteps-1]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_HEIGHT/2;
+		lastX = Constants.PLANE_LENGTH*valuesX[numSteps-1]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2;
+        lastY = -Constants.PLANE_LENGTH*valuesY[numSteps-1]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_HEIGHT /2;
 		
 	}
 	
-	public void processRK42Range(Obstacle obstacle, Player players[], int numPlayers, int currentTurn, double angle ,boolean inverted)
+	public void processRK42Range(Obstacle obstacle, Player[] players, int numPlayers, int currentTurn, double angle , boolean inverted)
 	{	
 		playersHit = new int[numPlayers*Constants.MAX_SOLDIERS_PER_PLAYER];
 		soldiersHit = new int[numPlayers*Constants.MAX_SOLDIERS_PER_PLAYER];
@@ -509,8 +500,8 @@ public class Function
 		valuesY[0] = valuesY[0] - Constants.SOLDIER_RADIUS*Math.sin(angle);
 		
 		
-		valuesX[0] = (Constants.PLANE_GAME_LENGTH*(valuesX[0] - Constants.PLANE_LENGTH/2))/Constants.PLANE_LENGTH;
-		valuesY[0] = (Constants.PLANE_GAME_LENGTH*(-valuesY[0] + Constants.PLANE_HEIGHT/2))/Constants.PLANE_LENGTH;
+		valuesX[0] = (Constants.PLANE_GAME_LENGTH*(valuesX[0] - (double) Constants.PLANE_LENGTH /2))/Constants.PLANE_LENGTH;
+		valuesY[0] = (Constants.PLANE_GAME_LENGTH*(-valuesY[0] + (double) Constants.PLANE_HEIGHT /2))/Constants.PLANE_LENGTH;
 		valuesDY[0] = Math.tan(angle);
 			
 		fireAngle = angle;
@@ -609,8 +600,8 @@ public class Function
 			}
 			
 			
-			double x = Constants.PLANE_LENGTH*valuesX[i]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2;
-			double y = -Constants.PLANE_LENGTH*valuesY[i]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_HEIGHT/2;
+			double x = Constants.PLANE_LENGTH*valuesX[i]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2;
+			double y = -Constants.PLANE_LENGTH*valuesY[i]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_HEIGHT /2;
 		
 			
 			if(inverted)
@@ -640,7 +631,7 @@ public class Function
 											
 						if(distSquared < Constants.SOLDIER_RADIUS*Constants.SOLDIER_RADIUS)
 						{
-							if(playerAlreadyHit(j,k)==false)
+							if(!playerAlreadyHit(j, k))
 							{
 								playersHit[numPlayersHit] = j;
 								soldiersHit[numPlayersHit] = k;
@@ -668,21 +659,9 @@ public class Function
 			
 		}
 		
-		lastX = Constants.PLANE_LENGTH*valuesX[numSteps-1]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_LENGTH/2;;
-		lastY = -Constants.PLANE_LENGTH*valuesY[numSteps-1]/Constants.PLANE_GAME_LENGTH + Constants.PLANE_HEIGHT/2;
+		lastX = Constants.PLANE_LENGTH*valuesX[numSteps-1]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_LENGTH /2;
+        lastY = -Constants.PLANE_LENGTH*valuesY[numSteps-1]/Constants.PLANE_GAME_LENGTH + (double) Constants.PLANE_HEIGHT /2;
 
 				
 	}
-	
-	public double getLastX()
-	{
-		return lastX;
-	}
-	
-	public double getLastY()
-	{
-		return lastY;
-	}
-
-	
 }

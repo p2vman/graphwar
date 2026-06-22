@@ -18,6 +18,7 @@
 package graphwar;
 
 import graphwar.graphserver.Constants;
+import lombok.Getter;
 
 import javax.swing.*;
 import java.awt.*;
@@ -28,33 +29,35 @@ import java.util.Stack;
 
 public class GameScreen extends JPanel implements ActionListener, StartStopPanel, KeyListener, MouseListener
 {
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
-	private JLabel[] backgroundImages;
+	private final JLabel[] backgroundImages;
 	
-	private JLabel yImg;
-	private JLabel dyImg;
-	private JLabel ddyImg;
+	private final JLabel yImg;
+	private final JLabel dyImg;
+	private final JLabel ddyImg;
 	
-	private GraphButton fire;
-	private GraphButton quit;
-	private GraphButton global;	
-	private JTextField funcField;	
-	private JTextField chatField;	
-	private GraphTextBox chatBox;	
-	private GraphPlane plane;
-	private GraphTimer timer;
-	private GraphAngleDisplay angleDisplay;
+	private final GraphButton fire;
+	private final GraphButton quit;
+	private final GraphButton global;
+	private final JTextField funcField;
+	private final JTextField chatField;
+	private final GraphTextBox chatBox;
+	private final GraphPlane plane;
+	private final GraphTimer timer;
+	private final GraphAngleDisplay angleDisplay;
 	
-	private JLabel[] backgroundsQuit;
-	private GraphButton yesQuit;
-	private GraphButton noQuit;
-	private boolean quitVisible;
+	private final JLabel[] backgroundsQuit;
+	private final GraphButton yesQuit;
+	private final GraphButton noQuit;
+	@Getter
+    private boolean quitVisible;
 	
-	private JLabel[] backgroundsShowMessage;
-	private GraphButton okButton;
-	private JLabel messageLabel;
-	private boolean showMessageVisible;
+	private final JLabel[] backgroundsShowMessage;
+	private final GraphButton okButton;
+	private final JLabel messageLabel;
+	@Getter
+    private boolean showMessageVisible;
 	
 	public GameScreen(Graphwar graphwar, String confFile) throws Exception
 	{		
@@ -190,7 +193,7 @@ public class GameScreen extends JPanel implements ActionListener, StartStopPanel
 	
 	private void addComponentsReversed(JPanel panel, Stack<Component> components)
 	{	
-    	while(components.empty() == false)
+    	while(!components.empty())
     	{
     		panel.add(components.pop());
     	}
@@ -212,11 +215,10 @@ public class GameScreen extends JPanel implements ActionListener, StartStopPanel
 			{
 				okButton.setVisible(show);
 				messageLabel.setVisible(show);
-				
-				for(int i=0; i<backgroundsShowMessage.length; i++)
-				{
-					backgroundsShowMessage[i].setVisible(show);
-				}
+
+                for (JLabel jLabel : backgroundsShowMessage) {
+                    jLabel.setVisible(show);
+                }
 				
 				showMessageVisible = show;
 				
@@ -238,11 +240,10 @@ public class GameScreen extends JPanel implements ActionListener, StartStopPanel
 				yesQuit.setVisible(show);
 				noQuit.setVisible(show);
 				quitVisible = show;
-				
-				for(int i=0; i<backgroundsQuit.length; i++)
-				{
-					backgroundsQuit[i].setVisible(show);
-				}
+
+                for (JLabel jLabel : backgroundsQuit) {
+                    jLabel.setVisible(show);
+                }
 			}
 		}
 		);
@@ -255,14 +256,7 @@ public class GameScreen extends JPanel implements ActionListener, StartStopPanel
 		{
 			public void run()
 			{
-				if(graphwar.getGlobalClient().isRunning())
-				{
-					global.setVisible(true);
-				}
-				else
-				{
-					global.setVisible(false);
-				}
+                global.setVisible(graphwar.getGlobalClient().isRunning());
 				
 				repaint();
 			}
@@ -346,18 +340,8 @@ public class GameScreen extends JPanel implements ActionListener, StartStopPanel
 			);
 		}
 	}
-	
-	public boolean isShowMessageVisible()
-	{
-		return showMessageVisible;
-	}
-	
-	public boolean isQuitVisible()
-	{
-		return quitVisible;
-	}
-	
-	public void actionPerformed(ActionEvent arg0) 
+
+    public void actionPerformed(ActionEvent arg0)
 	{
 		if(this.quitVisible)
 		{
@@ -406,7 +390,7 @@ public class GameScreen extends JPanel implements ActionListener, StartStopPanel
 			else if(arg0.getSource()==chatField)
 			{
 				String text = chatField.getText();
-				if(text.isEmpty()==false)
+				if(!text.isEmpty())
 				{
 					graphwar.getGameData().sendChatMessage(text);
 					chatField.setText("");
@@ -414,11 +398,11 @@ public class GameScreen extends JPanel implements ActionListener, StartStopPanel
 			}
 			else if(arg0.getSource()==fire || arg0.getSource()==funcField)
 			{
-				if((graphwar.getGameData().getCurrentTurnPlayer() instanceof ComputerPlayer)==false)
+				if(!(graphwar.getGameData().getCurrentTurnPlayer() instanceof ComputerPlayer))
 				{				
 					String function = funcField.getText();
 					
-					if(function.length() > 0)
+					if(!function.isEmpty())
 					{
 						graphwar.getGameData().sendFunction(function);
 					}

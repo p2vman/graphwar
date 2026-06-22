@@ -18,28 +18,43 @@
 package graphwar;
 
 import graphwar.graphserver.Constants;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.security.SecureRandom;
 import java.util.Random;
 
 public class Soldier
 {
-	private int x;
-	private int y;
-	private double angle;
+	@Getter
+    private int x;
+	@Getter
+    private int y;
+	@Setter
+    @Getter
+    private double angle;
 	
-	private boolean alive;	
-	private boolean exploding;
+	@Setter
+    @Getter
+    private boolean alive;
+	@Getter
+    private boolean exploding;
 	private long timeExplodingStarted;
-	private int killPosition;
+	@Setter
+    @Getter
+    private int killPosition;
 	
-	private String function;
+	@Setter
+    @Getter
+    private String function;
 	
 	private boolean animating;
-	private int animationNum;
+	@Getter
+    private int animationNum;
 	private long timeAnimationStarted;
 	private long nextAnimation;
 	
-	private static Random random = new Random();
+	private final static Random random = new Random();
 	
 	public Soldier()
 	{
@@ -65,53 +80,8 @@ public class Soldier
 		
 		this.function = "";
 	}
-	
-	public int getX()
-	{
-		return x;
-	}
-	
-	public int getY()
-	{
-		return y;
-	}
-	
-	public double getAngle()
-	{
-		return angle;
-	}
-	
-	public void setAngle(double angle)
-	{
-		this.angle = angle;
-	}
-	
-	public boolean isAlive()
-	{
-		return alive;
-	}
-	
-	public void setAlive(boolean alive)
-	{
-		this.alive = alive;
-	}
-	
-	public int getKillPosition()
-	{
-		return killPosition;
-	}
-	
-	public void setKillPosition(int killPosition)
-	{
-		this.killPosition = killPosition;
-	}
-	
-	public boolean isExploding()
-	{
-		return exploding;
-	}
 
-	public void setExploding(boolean exploding)
+    public void setExploding(boolean exploding)
 	{
 		this.exploding = exploding;
 		
@@ -125,18 +95,8 @@ public class Soldier
 	{
 		return System.currentTimeMillis() - timeExplodingStarted;
 	}
-	
-	public String getFunction()
-	{
-		return function;
-	}
-	
-	public void setFunction(String function)
-	{
-		this.function = function;
-	}
-	
-	public boolean isAnimating()
+
+    public boolean isAnimating()
 	{
 		if(animating)
 		{
@@ -155,13 +115,8 @@ public class Soldier
 			return false;
 		}
 	}
-	
-	public int getAnimationNum()
-	{
-		return animationNum;
-	}
-	
-	public long getAnimationTime()
+
+    public long getAnimationTime()
 	{
 		return System.currentTimeMillis() - timeAnimationStarted;
 	}

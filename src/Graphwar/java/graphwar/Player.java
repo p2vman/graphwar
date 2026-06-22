@@ -17,22 +17,34 @@
 package graphwar;
 
 import graphwar.graphserver.Constants;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.awt.*;
 
 public class Player
 {
-	private String name;
-	protected int team;
-	private int numSoldiers;
-	protected Soldier[] soldiers;
+	@Getter
+    private final String name;
+	@Getter
+    @Setter
+    protected int team;
+	@Getter
+    private int numSoldiers;
+	@Getter
+    protected Soldier[] soldiers;
 	protected int currentTurnSoldier;
-	private int playerID;
-	private boolean localPlayer;
-	private Color color;
-	private boolean ready;
-	private int nameLength;
-	private boolean disconnected;
+	private final int playerID;
+	@Getter
+    private final boolean localPlayer;
+	@Getter
+    private final Color color;
+	@Setter
+    private boolean ready;
+	@Getter
+    private final int nameLength;
+	@Getter
+    private boolean disconnected;
 	
 	public Player(String name, int playerID, int team, boolean localPlayer, int numSoldiers, boolean ready)
 	{
@@ -59,48 +71,18 @@ public class Player
 		
 		this.disconnected = false;
 	}
-	
-	public boolean isDisconnected()
-	{
-		return this.disconnected;
-	}
-	
-	public void markDisconnected()
+
+    public void markDisconnected()
 	{
 		this.disconnected = true;
 	}
-	
-	public int getNameLength()
-	{
-		return nameLength;
-	}
-	
-	public boolean getReady()
+
+    public boolean getReady()
 	{
 		return this.ready;
 	}
-	
-	public void setReady(boolean ready)
-	{
-		this.ready = ready;
-	}
-	
-	public String getName()
-	{
-		return this.name;
-	}
-	
-	public void setTeam(int team)
-	{
-		this.team = team;
-	}
-	
-	public int getTeam()
-	{
-		return this.team;
-	}
-	
-	public void startSoldier(int soldierNum, int x, int y)
+
+    public void startSoldier(int soldierNum, int x, int y)
 	{
 		this.soldiers[soldierNum] = new Soldier(x, y);
 	}
@@ -109,18 +91,8 @@ public class Player
 	{
 		this.numSoldiers = numSoldiers;
 	}
-	
-	public int getNumSoldiers()
-	{
-		return this.numSoldiers;
-	}
-	
-	public Soldier[] getSoldiers()
-	{
-		return this.soldiers;
-	}
-	
-	public int getCurrentTurnSoldierIndex()
+
+    public int getCurrentTurnSoldierIndex()
 	{
 		return this.currentTurnSoldier;
 	}
@@ -134,18 +106,8 @@ public class Player
 	{
 		return this.playerID;
 	}
-	
-	public boolean isLocalPlayer()
-	{
-		return this.localPlayer;
-	}
-	
-	public Color getColor()
-	{
-		return this.color;
-	}
-	
-	public void restartTurn()
+
+    public void restartTurn()
 	{
 		currentTurnSoldier = 0;
 	}

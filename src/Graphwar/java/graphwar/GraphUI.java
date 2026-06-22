@@ -23,11 +23,11 @@ import javax.swing.*;
 
 public class GraphUI extends JPanel
 {
-	private JPanel[] screens;
+	private final JPanel[] screens;
 	private JPanel currentScreen;
 	private int currentScreenIndex;
 	
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
 	public GraphUI(Graphwar graphwar) throws Exception
 	{

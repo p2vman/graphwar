@@ -17,6 +17,8 @@
 
 package graphwar.graphserver;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -29,7 +31,7 @@ public class ClientConnection
 	@Getter
     private final Connection connection;
 	@Getter
-    private final List<Player> players;
+    private final ObjectList<Player> players;
 	@Getter
     private final GraphServer server;
 	@Setter
@@ -46,7 +48,7 @@ public class ClientConnection
 		this.server     = server;
 		this.connection = connection;
 
-		this.players       = new ArrayList<Player>();
+		this.players       = new ObjectArrayList<>();
 		this.leader        = false;
 		this.readyNextTurn = false;
 		this.gameFinished  = false;

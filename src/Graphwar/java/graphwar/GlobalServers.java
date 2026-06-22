@@ -34,7 +34,9 @@ public class GlobalServers {
             if (fo.exists()) {
                 try (BufferedReader br = new BufferedReader(new FileReader(fo))) {
                     loadFromReader(br, list);
-                } catch (Exception e) { e.printStackTrace(); }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 if (!list.isEmpty()) return list;
             }
         }
@@ -72,30 +74,17 @@ public class GlobalServers {
             String[] parts = line.split(",");
             if (parts.length >= 2) {
                 String name = parts[0].trim();
-                String hostPart = parts[1].trim();
+                String host = parts[1].trim();
                 int port = graphwar.graphserver.Constants.GLOBAL_PORT;
-                String host = hostPart;
-                if (hostPart.startsWith("ws://") || hostPart.startsWith("wss://") || hostPart.startsWith("http://") || hostPart.startsWith("https://")) {
+                if (parts.length >= 3) {
+                    try { port = Integer.parseInt(parts[2].trim()); } catch (NumberFormatException e) {}
+                }
+                if (host.contains("://")) {
                     try {
-                        java.net.URI uri = new java.net.URI(hostPart);
-                        String scheme = uri.getScheme();
-                        if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
-                            String wsScheme = "https".equalsIgnoreCase(scheme) ? "wss" : "ws";
-                            java.net.URI wsUri = new java.net.URI(wsScheme, uri.getUserInfo(), uri.getHost(), uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment());
-                            host = wsUri.toString();
-                            if (wsUri.getPort() != -1) port = wsUri.getPort();
-                        } else {
-                            host = hostPart;
-                            if (uri.getPort() != -1) port = uri.getPort();
-                        }
-                        if (uri.getPort() == -1 && parts.length >= 3) {
-                            try { port = Integer.parseInt(parts[2].trim()); } catch (NumberFormatException e) {}
-                        }
-                    } catch (Exception e) { }
-                } else {
-                    if (parts.length >= 3) {
-                        try { port = Integer.parseInt(parts[2].trim()); } catch (NumberFormatException e) {}
-                    }
+                        java.net.URI uri = new java.net.URI(host);
+                        if (uri.getHost() != null) host = uri.getHost();
+                        if (uri.getPort() != -1) port = uri.getPort();
+                    } catch (Exception e) {}
                 }
                 list.add(new ServerEntry(name, host, port));
             }

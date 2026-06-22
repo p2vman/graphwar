@@ -22,46 +22,52 @@ import graphwar.graphserver.NetworkProtocol;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.util.AttributeKey;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Vector;
+import java.nio.file.Files;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 
 public class GlobalServer implements Runnable
 {
-	private List<LobbyPlayer> players;
-	private List<Room> rooms;
+	private final ObjectList<LobbyPlayer> players;
+	private final ObjectList<Room> rooms;
 		
 	private long lastRoomCheck;
 
 	private EventLoopGroup bossGroup;
 	private EventLoopGroup workerGroup;
-	private Channel serverChannel;
 
 	private static final AttributeKey<LobbyPlayer> ATTR_PLAYER = AttributeKey.valueOf("lobbyPlayer");
 	private static final AttributeKey<Connection> ATTR_CONN = AttributeKey.valueOf("connection");
 
 	public GlobalServer()
 	{
-		this.players = new Vector<LobbyPlayer>();
-		this.rooms = new Vector<Room>();
+		this.players = new ObjectArrayList<>();
+		this.rooms = new ObjectArrayList<>();
 		
 		lastRoomCheck = System.currentTimeMillis();
 	}
 	
 	public void registerNewPlayer(LobbyPlayer newPlayer)
 	{
-		if(newPlayer.isDummy() == false)
+		if(!newPlayer.isDummy())
 		{		
 			String message = NetworkProtocol.JOIN+"&"+newPlayer.getName()+"&"+newPlayer.getID();
 			
@@ -91,18 +97,13 @@ public class GlobalServer implements Runnable
     	
     	synchronized(players)
     	{
-	    	ListIterator<LobbyPlayer> itr = players.listIterator();
-	    	
-	    	while(itr.hasNext())
-	    	{
-	    		LobbyPlayer tempPlayer = itr.next();
-	    		
-	    		if(tempPlayer.isDummy()==false)
-	    		{
-	    			message = message + "&" + tempPlayer.getName() + "&" + tempPlayer.getID();
-	    			i++;
-	    		}    		
-	    	}
+
+            for (LobbyPlayer tempPlayer : players) {
+                if (!tempPlayer.isDummy()) {
+                    message = message + "&" + tempPlayer.getName() + "&" + tempPlayer.getID();
+                    i++;
+                }
+            }
     	}
 	    	
     	message = NetworkProtocol.LIST_PLAYERS+"&"+i+message;
@@ -118,15 +119,11 @@ public class GlobalServer implements Runnable
     	
     	synchronized(rooms)
 		{
-	    	ListIterator<Room> itr = rooms.listIterator();	    	
-	    	while(itr.hasNext())
-	    	{
-	    		Room room = itr.next();
-	    		
-	    		message = message +"&"+room.getName()+"&"+room.getRoomID()+"&"+room.getIp()+"&"+room.getPort()+"&"+room.getGameMode()+"&"+room.getNumPlayers();
-	    		
-	    		i++;
-	    	}
+            for (Room room : rooms) {
+                message = message + "&" + room.getName() + "&" + room.getRoomID() + "&" + room.getIp() + "&" + room.getPort() + "&" + room.getGameMode() + "&" + room.getNumPlayers();
+
+                i++;
+            }
 		}
 	    	
     	message = NetworkProtocol.LIST_ROOMS+"&"+i+message;
@@ -151,12 +148,9 @@ public class GlobalServer implements Runnable
     		snapshot = new Vector<LobbyPlayer>(players);
     	}
 
-    	ListIterator<LobbyPlayer> itr = snapshot.listIterator();
-    	while(itr.hasNext())
-    	{
-    		LobbyPlayer player = itr.next();
-    		player.sendMessage(message);
-    	}
+        for (LobbyPlayer player : snapshot) {
+            player.sendMessage(message);
+        }
     }
     
    
@@ -339,7 +333,7 @@ public class GlobalServer implements Runnable
 			List<LobbyPlayer> playerSnapshot;
 			synchronized(players)
 			{
-				playerSnapshot = new Vector<LobbyPlayer>(players);
+				playerSnapshot = new ArrayList<>(players);
 			}
 
 			synchronized(rooms)
@@ -351,19 +345,14 @@ public class GlobalServer implements Runnable
 
 				    boolean roomOk = false;
 
-				    ListIterator<LobbyPlayer> pitr = playerSnapshot.listIterator();
-				    while(pitr.hasNext())
-				    {
-				        LobbyPlayer tempPlayer = pitr.next();
+                    for (LobbyPlayer tempPlayer : playerSnapshot) {
+                        if (tempPlayer.getRoom() == room) {
+                            roomOk = true;
+                            break;
+                        }
+                    }
 
-				        if(tempPlayer.getRoom() == room)
-				        {
-				            roomOk = true;
-				            break;
-				        }
-				    }
-
-				    if(roomOk == false)
+				    if(!roomOk)
 				    {
 				        System.out.println("Removing room: "+room.getName());
 
@@ -382,162 +371,90 @@ public class GlobalServer implements Runnable
 
 	public void run()
 	{
-		runWithProtocol("tcp", Constants.GLOBAL_PORT);
-	}
-
-	public void runWithProtocol(String protocol, int wsPort) {
 		while(true) {
 			try {
-				bossGroup = new NioEventLoopGroup(1);
-				workerGroup = new NioEventLoopGroup();
+				bossGroup = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
+				workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
 
 				try {
-				    final GlobalServer self = this;
+					final GlobalServer self = this;
 
-				    ChannelFuture tcpFuture = null;
-				    ChannelFuture wsFuture = null;
+					ChannelFuture tcpFuture = null;
+					ServerBootstrap b = new ServerBootstrap();
+					b.group(bossGroup, workerGroup)
+							.channel(NioServerSocketChannel.class)
+							.childHandler(new ChannelInitializer<SocketChannel>() {
+								@Override
+								protected void initChannel(SocketChannel ch) throws Exception {
+									ChannelPipeline p = ch.pipeline();
 
-				    if ("tcp".equals(protocol) || "both".equals(protocol)) {
-				        ServerBootstrap b = new ServerBootstrap();
-				        b.group(bossGroup, workerGroup)
-				         .channel(NioServerSocketChannel.class)
-				         .childHandler(new ChannelInitializer<SocketChannel>() {
-				             @Override
-				             protected void initChannel(SocketChannel ch) throws Exception {
-				                 ChannelPipeline p = ch.pipeline();
+									final Connection conn = new Connection(ch);
+									final LobbyPlayer player = new LobbyPlayer(conn, self);
 
-				                 final Connection conn = new Connection(ch);
-				                 final LobbyPlayer player = new LobbyPlayer(conn, self);
+									ch.attr(ATTR_CONN).set(conn);
+									ch.attr(ATTR_PLAYER).set(player);
 
-				                 ch.attr(ATTR_CONN).set(conn);
-				                 ch.attr(ATTR_PLAYER).set(player);
+									p.addLast(new LineBasedFrameDecoder(8192));
+									p.addLast(new StringDecoder(java.nio.charset.StandardCharsets.UTF_8));
+									p.addLast(new StringEncoder(java.nio.charset.StandardCharsets.UTF_8));
 
-				                 p.addLast(new LineBasedFrameDecoder(8192));
-				                 p.addLast(new StringDecoder(java.nio.charset.StandardCharsets.UTF_8));
-				                 p.addLast(new StringEncoder(java.nio.charset.StandardCharsets.UTF_8));
+									p.addLast(new SimpleChannelInboundHandler<String>() {
+										@Override
+										protected void channelRead0(ChannelHandlerContext ctx, String msg) throws Exception {
+											Connection c = ctx.channel().attr(ATTR_CONN).get();
+											if (c != null) c.offerInbound(msg);
+										}
 
-				                 p.addLast(new SimpleChannelInboundHandler<String>() {
-				                     @Override
-				                     protected void channelRead0(ChannelHandlerContext ctx, String msg) throws Exception {
-				                         Connection c = ctx.channel().attr(ATTR_CONN).get();
-				                         if(c != null) c.offerInbound(msg);
-				                     }
+										@Override
+										public void channelActive(ChannelHandlerContext ctx) throws Exception {
+											LobbyPlayer p = ctx.channel().attr(ATTR_PLAYER).get();
+											if (p != null) {
+												new Thread(p).start();
+												synchronized (players) {
+													players.add(p);
+												}
+											}
+										}
 
-				                     @Override
-				                     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-				                         LobbyPlayer p = ctx.channel().attr(ATTR_PLAYER).get();
-				                         if(p != null)
-				                         {
-				                             new Thread(p).start();
-				                             synchronized(players)
-				                             {
-				                                 players.add(p);
-				                             }
-				                         }
-				                     }
+										@Override
+										public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+											LobbyPlayer p = ctx.channel().attr(ATTR_PLAYER).get();
+											if (p != null) {
+												removePlayer(p);
+												p.disconnect();
+											}
+										}
 
-				                     @Override
-				                     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-				                         LobbyPlayer p = ctx.channel().attr(ATTR_PLAYER).get();
-				                         if(p != null)
-				                         {
-				                             removePlayer(p);
-				                             p.disconnect();
-				                         }
-				                     }
+										@Override
+										public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+											cause.printStackTrace();
+											ctx.close();
+										}
+									});
+								}
+							})
+							.option(ChannelOption.SO_BACKLOG, 128)
+							.childOption(ChannelOption.SO_KEEPALIVE, true)
+							.childOption(ChannelOption.TCP_NODELAY, true);
 
-				                     @Override
-				                     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-				                         cause.printStackTrace();
-				                         ctx.close();
-				                     }
-				                 });
-				             }
-				         })
-				         .option(ChannelOption.SO_BACKLOG, 128)
-				         .childOption(ChannelOption.SO_KEEPALIVE, true)
-				         .childOption(ChannelOption.TCP_NODELAY, true);
+					tcpFuture = b.bind(Constants.GLOBAL_PORT).sync();
+					System.out.println("GlobalServer listening on port " + Constants.GLOBAL_PORT);
 
-				        ChannelFuture f = b.bind(Constants.GLOBAL_PORT).sync();
-				        tcpFuture = f;
-				        System.out.println("TCP GlobalServer listening on port " + Constants.GLOBAL_PORT);
-				    }
 
-				    if ("ws".equals(protocol) || "both".equals(protocol)) {
-				        ServerBootstrap bws = new ServerBootstrap();
-				        bws.group(bossGroup, workerGroup)
-				           .channel(NioServerSocketChannel.class)
-				           .childHandler(new ChannelInitializer<SocketChannel>() {
-				               @Override
-				               protected void initChannel(SocketChannel ch) throws Exception {
-				                   ChannelPipeline p = ch.pipeline();
+					// Wait for bound channel to close
+					if (tcpFuture != null) tcpFuture.channel().closeFuture().sync();
 
-				                   p.addLast(new io.netty.handler.codec.http.HttpServerCodec());
-				                   p.addLast(new io.netty.handler.codec.http.HttpObjectAggregator(65536));
-				                   p.addLast(new io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler("/ws"));
-
-				                   final Connection conn = new Connection(ch);
-				                   final LobbyPlayer player = new LobbyPlayer(conn, self);
-
-				                   ch.attr(ATTR_CONN).set(conn);
-				                   ch.attr(ATTR_PLAYER).set(player);
-
-				                   p.addLast(new SimpleChannelInboundHandler<io.netty.handler.codec.http.websocketx.TextWebSocketFrame>() {
-				                       @Override
-				                       protected void channelRead0(ChannelHandlerContext ctx, io.netty.handler.codec.http.websocketx.TextWebSocketFrame msg) throws Exception {
-				                           Connection c = ctx.channel().attr(ATTR_CONN).get();
-				                           if (c != null) c.offerInbound(msg.text());
-				                       }
-
-				                       @Override
-				                       public void channelActive(ChannelHandlerContext ctx) throws Exception {
-				                           LobbyPlayer p = ctx.channel().attr(ATTR_PLAYER).get();
-				                           if(p != null) {
-				                               new Thread(p).start();
-				                               synchronized(players) { players.add(p); }
-				                           }
-				                       }
-
-				                       @Override
-				                       public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-				                           LobbyPlayer p = ctx.channel().attr(ATTR_PLAYER).get();
-				                           if(p != null) { removePlayer(p); p.disconnect(); }
-				                       }
-
-				                       @Override
-				                       public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-				                           cause.printStackTrace();
-				                           ctx.close();
-				                       }
-				                   });
-				               }
-				           })
-				           .option(ChannelOption.SO_BACKLOG, 128)
-				           .childOption(ChannelOption.SO_KEEPALIVE, true)
-				           .childOption(ChannelOption.TCP_NODELAY, true);
-
-				        ChannelFuture fw = bws.bind(wsPort).sync();
-				        wsFuture = fw;
-				        System.out.println("WebSocket GlobalServer listening on port " + wsPort + " (path /ws)");
-				    }
-
-				    // Wait for any bound channel to close
-				    if (tcpFuture != null) tcpFuture.channel().closeFuture().sync();
-				    if (wsFuture != null) wsFuture.channel().closeFuture().sync();
-
-				}
-				finally {
-				    bossGroup.shutdownGracefully();
-				    workerGroup.shutdownGracefully();
+				} finally {
+					bossGroup.shutdownGracefully();
+					workerGroup.shutdownGracefully();
 				}
 
-			} catch(Exception e) {
+			} catch (Exception e) {
 				e.printStackTrace();
-				try { Thread.sleep(1000); } catch(InterruptedException ex) { Thread.currentThread().interrupt(); }
+				LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1000));
 			}
 		}
 	}
-		
 	
 		
 	public static void handleArgs(String[] args)
@@ -553,30 +470,21 @@ public class GlobalServer implements Runnable
 	{
 		copyResourceIfMissing("/globalserver.properties", "globalserver.properties");
 
-		java.io.File f = new java.io.File("globalserver.properties");
-
-		String protocol = "tcp";
-		int wsPort = graphwar.graphserver.Constants.GLOBAL_PORT + 1;
+		File f = new File("globalserver.properties");
 
 		if (f.exists()) {
-		    try (java.io.FileReader fr = new java.io.FileReader(f)) {
-		        java.util.Properties p = new java.util.Properties();
+		    try (FileReader fr = new FileReader(f)) {
+		        Properties p = new Properties();
 		        p.load(fr);
 		        String port = p.getProperty("port");
 		        String ip = p.getProperty("ip");
 		        if (port != null) {
-		            try { graphwar.graphserver.Constants.GLOBAL_PORT = Integer.parseInt(port); } catch (NumberFormatException e) {}
+		            try { graphwar.graphserver.Constants.GLOBAL_PORT = Integer.parseInt(port); } catch (NumberFormatException ignored) {}
 		        }
 		        if (ip != null) {
 		            graphwar.graphserver.Constants.GLOBAL_IP = ip;
 		        }
-		        String proto = p.getProperty("protocol");
-		        if (proto != null) protocol = proto.trim().toLowerCase();
-		        String wsp = p.getProperty("wsPort");
-		        if (wsp != null) {
-		            try { wsPort = Integer.parseInt(wsp); } catch (NumberFormatException e) {}
-		        }
-		        System.out.println("Loaded globalserver.properties: ip="+graphwar.graphserver.Constants.GLOBAL_IP+" port="+graphwar.graphserver.Constants.GLOBAL_PORT+" protocol="+protocol+" wsPort="+wsPort);
+		        System.out.println("Loaded globalserver.properties: ip="+graphwar.graphserver.Constants.GLOBAL_IP+" port="+graphwar.graphserver.Constants.GLOBAL_PORT);
 		    } catch (Exception e) { e.printStackTrace(); }
 		}
 
@@ -584,12 +492,10 @@ public class GlobalServer implements Runnable
 
 		GlobalServer server = new GlobalServer();
 
-		final String protoFinal = protocol;
-		final int wsPortFinal = wsPort;
 
 		new Thread(() -> {
 		    try {
-		        server.runWithProtocol(protoFinal, wsPortFinal);
+		        server.run();
 		    } catch (Exception e) {
 		        e.printStackTrace();
 		    }
@@ -598,13 +504,12 @@ public class GlobalServer implements Runnable
 
 	private static void copyResourceIfMissing(String resourcePath, String destFileName) {
 		try {
-			java.io.File dest = new java.io.File(destFileName);
+			File dest = new File(destFileName);
 			if (dest.exists()) return;
-			java.io.InputStream in = GlobalServer.class.getResourceAsStream(resourcePath);
+			InputStream in = GlobalServer.class.getResourceAsStream(resourcePath);
 			if (in == null) return;
-			java.nio.file.Files.copy(in, dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			Files.copy(in, dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 			in.close();
-			System.out.println("Copied default config resource " + resourcePath + " to " + destFileName);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

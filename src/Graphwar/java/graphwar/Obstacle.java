@@ -25,8 +25,8 @@ import java.util.Random;
 
 public class Obstacle
 {
-	private	BufferedImage terrain;
-	private Graphics2D terrainGraphics;
+	private final 	BufferedImage terrain;
+	private final Graphics2D terrainGraphics;
 	
 	int expX;
 	int expY;

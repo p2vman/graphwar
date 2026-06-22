@@ -33,39 +33,39 @@ import java.util.Stack;
 public class PreGameScreen extends JPanel implements ActionListener
 {
 	
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
+
+	private final JLabel[] backgroundImages;
+
+	private final GraphButton normalFuncButton;
+	private final GraphButton firstFuncButton;
+	private final GraphButton secondFuncButton;
+	private final GraphButton back;
+	private final GraphButton addLocalPlayer;
+	private final GraphButton addPCPlayer;
+	private final GraphButton readyOn;
+	private final GraphButton readyOff;
+	private final GraphButton global;
+	private final JTextField chatField;
+	private final GraphTextBox chatBox;
+	private final PlayerBoard playerBoard;
 	
-	private JLabel[] backgroundImages;
-	
-	private GraphButton normalFuncButton;
-	private GraphButton firstFuncButton;
-	private GraphButton secondFuncButton;
-	private GraphButton back;
-	private GraphButton addLocalPlayer;
-	private GraphButton addPCPlayer;
-	private GraphButton readyOn;
-	private GraphButton readyOff;
-	private GraphButton global;	
-	private JTextField chatField;	
-	private GraphTextBox chatBox;
-	private PlayerBoard playerBoard;
-	
-	private JLabel[] backgroundsAddLocal;
-	private JTextField nameFieldAddLocal;	
-	private GraphButton yesButtonAddLocal;
-	private GraphButton noButtonAddLocal;
+	private final JLabel[] backgroundsAddLocal;
+	private final JTextField nameFieldAddLocal;
+	private final GraphButton yesButtonAddLocal;
+	private final GraphButton noButtonAddLocal;
 	private boolean addLocalVisible;
 	
-	private JLabel[] backgroundsAddPC;
-	private JTextField nameFieldAddPC;
-	private JTextField levelFieldAddPC;
-	private GraphButton yesButtonAddPC;
-	private GraphButton noButtonAddPC;
+	private final JLabel[] backgroundsAddPC;
+	private final JTextField nameFieldAddPC;
+	private final JTextField levelFieldAddPC;
+	private final GraphButton yesButtonAddPC;
+	private final GraphButton noButtonAddPC;
 	private boolean addPCVisible;
 	
-	private JLabel[] backgroundsShowMessage;
-	private GraphButton okButton;
-	private JLabel messageLabel;
+	private final JLabel[] backgroundsShowMessage;
+	private final GraphButton okButton;
+	private final JLabel messageLabel;
 	private boolean showMessageVisible;
 	
 	// private AudioClip addPlayerSound;
@@ -89,7 +89,7 @@ public class PreGameScreen extends JPanel implements ActionListener
 		
 		/////	Main Screen		/////////////
 			
-			int numBackgroundImages = Integer.parseInt(GraphUtil.nextLine(read));			
+			int numBackgroundImages = Integer.parseInt(GraphUtil.nextLine(read));
 			backgroundImages = new JLabel[numBackgroundImages];
 			
 			for(int i=0; i<numBackgroundImages; i++)

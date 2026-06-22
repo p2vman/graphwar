@@ -25,9 +25,9 @@ import java.net.SocketTimeoutException;
 
 public class ServerConnection implements Runnable
 {
-	private Connection connection;
+	private final Connection connection;
 	
-	private GameData gameData;
+	private final GameData gameData;
 	
 	private boolean running;
 	

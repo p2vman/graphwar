@@ -30,7 +30,7 @@ import java.util.Random;
 
 public class GraphUtil
 {
-	public static Random random = new Random(System.currentTimeMillis());
+	public final static Random random = new Random(System.currentTimeMillis());
 	
 	public static Color getRandomColor()
 	{

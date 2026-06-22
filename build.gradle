@@ -71,17 +71,13 @@ dependencies {
     compileOnly 'com.google.auto.service:auto-service-annotations:1.1.1'
     annotationProcessor 'com.google.auto.service:auto-service:1.1.1'
 
-    //// Source: https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
-    //implementation 'it.unimi.dsi:fastutil:8.5.18'
-
     implementation "io.netty:netty-transport:4.2.15.Final"
     implementation "io.netty:netty-buffer:4.2.15.Final"
     implementation "io.netty:netty-codec:4.2.15.Final"
     implementation "io.netty:netty-handler:4.2.15.Final"
-    implementation "io.netty:netty-codec-http:4.2.15.Final"
 
-    // Source: https://mvnrepository.com/artifact/org.agrona/agrona
-    implementation 'org.agrona:agrona:2.4.1'
+    // Source: https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
+    implementation 'it.unimi.dsi:fastutil:8.5.18'
 }
 
 sourceSets.GlobalServer.compileClasspath += sourceSets.GraphServer.output

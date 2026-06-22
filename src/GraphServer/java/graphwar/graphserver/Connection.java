@@ -21,7 +21,6 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 
 import java.io.*;
-import java.net.URI;
 
 public class Connection
 {
@@ -55,83 +54,6 @@ public class Connection
         this.lastReceivedTime = System.currentTimeMillis();
         this.lastSentTime = System.currentTimeMillis();
 
-        if (host != null && (host.startsWith("ws://") || host.startsWith("wss://"))) {
-            URI uri;
-            try {
-                uri = new URI(host);
-            } catch (Exception e) {
-                throw new IOException(e);
-            }
-
-            String scheme = uri.getScheme();
-            String wsHost = uri.getHost();
-            int wsPort = uri.getPort() == -1 ? ("wss".equals(scheme) ? 443 : 80) : uri.getPort();
-
-            final io.netty.handler.ssl.SslContext sslCtx;
-            if ("wss".equalsIgnoreCase(scheme)) {
-                io.netty.handler.ssl.SslContext tmp = null;
-                try {
-                    tmp = io.netty.handler.ssl.SslContextBuilder.forClient().build();
-                } catch (Exception e) {
-                    tmp = null;
-                }
-                sslCtx = tmp;
-            } else {
-                sslCtx = null;
-            }
-
-            clientGroup = new io.netty.channel.nio.NioEventLoopGroup(1);
-            Bootstrap b = new Bootstrap();
-            b.group(clientGroup)
-             .channel(io.netty.channel.socket.nio.NioSocketChannel.class)
-             .option(ChannelOption.TCP_NODELAY, true)
-             .handler(new ChannelInitializer<Channel>() {
-                 @Override
-                 protected void initChannel(Channel ch) {
-                     ChannelPipeline p = ch.pipeline();
-                     if (sslCtx != null) {
-                         p.addLast(sslCtx.newHandler(ch.alloc(), wsHost, wsPort));
-                     }
-                     p.addLast(new io.netty.handler.codec.http.HttpClientCodec());
-                     p.addLast(new io.netty.handler.codec.http.HttpObjectAggregator(8192));
-                     p.addLast(new io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler(
-                             io.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory.newHandshaker(uri,
-                                     io.netty.handler.codec.http.websocketx.WebSocketVersion.V13, null, true, new io.netty.handler.codec.http.DefaultHttpHeaders())));
-                     p.addLast(new SimpleChannelInboundHandler<io.netty.handler.codec.http.websocketx.TextWebSocketFrame>() {
-                         @Override
-                         protected void channelRead0(ChannelHandlerContext ctx, io.netty.handler.codec.http.websocketx.TextWebSocketFrame msg) throws Exception {
-                             inboundQueue.offer(msg.text());
-                             lastReceivedTime = System.currentTimeMillis();
-                         }
-
-                         @Override
-                         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                             cause.printStackTrace();
-                             ctx.close();
-                         }
-                     });
-                 }
-             });
-
-            ChannelFuture f = b.connect(wsHost, wsPort);
-            try {
-                if (!f.await(java.util.concurrent.TimeUnit.SECONDS.toMillis(10))) {
-                    clientGroup.shutdownGracefully();
-                    throw new IOException("Connection timed out");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException(e);
-            }
-
-            if (!f.isSuccess()) {
-                clientGroup.shutdownGracefully();
-                throw new IOException(f.cause());
-            }
-
-            this.channel = f.channel();
-            return;
-        }
 
         // Plain TCP client (existing behaviour)
         clientGroup = new io.netty.channel.nio.NioEventLoopGroup(1);
@@ -240,12 +162,7 @@ public class Connection
 
         if (channel != null && channel.isActive())
         {
-            if (channel.pipeline().get(io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler.class) != null ||
-                channel.pipeline().get(io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler.class) != null) {
-                channel.writeAndFlush(new io.netty.handler.codec.http.websocketx.TextWebSocketFrame(message));
-            } else {
-                channel.writeAndFlush(out);
-            }
+            channel.writeAndFlush(out);
             lastSentTime = System.currentTimeMillis();
             return;
         }

@@ -17,15 +17,22 @@
 package graphwar.globalserver;
 
 import graphwar.graphserver.Constants;
+import lombok.Getter;
 
 public class Room 
 {
-	private String name;
-	private int port;
-	private String ip;
-	private int gameMode;
-	private int numPlayers;
-	private int roomID;
+	@Getter
+    private final String name;
+	@Getter
+    private final int port;
+	private final String ip;
+	@Getter
+    private int gameMode;
+	@Getter
+    private int numPlayers;
+	@Getter
+    private final int roomID;
+	@Getter
 	private long lastUpdate;
 	
 	private static int lastID = 1;
@@ -60,18 +67,8 @@ public class Room
 		
 		return timePassed;
 	}*/
-	
-	public String getName()
-	{
-		return this.name;
-	}
-	
-	public int getPort()
-	{
-		return this.port;
-	}
-	
-	public String getIp()
+
+    public String getIp()
 	{
 		if(this.ip.startsWith("127.0.0.1"))
 		{
@@ -79,20 +76,5 @@ public class Room
 		}
 		
 		return this.ip;
-	}
-	
-	public int getNumPlayers()
-	{
-		return this.numPlayers;
-	}
-	
-	public int getGameMode()
-	{
-		return this.gameMode;
-	}
-	
-	public int getRoomID()
-	{
-		return this.roomID;
 	}
 }

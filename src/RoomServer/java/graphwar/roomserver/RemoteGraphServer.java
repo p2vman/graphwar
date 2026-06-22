@@ -26,7 +26,7 @@ import java.io.IOException;
 
 public class RemoteGraphServer extends GraphServer
 {
-	private GlobalClient globalClient;
+	private final GlobalClient globalClient;
 	
 	public int getNumClients()
 	{
@@ -82,7 +82,7 @@ public class RemoteGraphServer extends GraphServer
 	{
 		super.removeClient(client);
 				
-		if(this.clients.size() == 0)
+		if(this.clients.isEmpty())
 		{
 			if(this.gameState == Constants.GAME)
 			{

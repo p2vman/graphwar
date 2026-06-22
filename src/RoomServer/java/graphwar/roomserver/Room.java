@@ -18,15 +18,17 @@
 package graphwar.roomserver;
 
 import graphwar.graphserver.Constants;
+import lombok.Getter;
 
 import java.io.IOException;
 
 public class Room
 {
-	private RemoteGraphServer gameServer;
-	private GlobalClient globalClient;
+	private final RemoteGraphServer gameServer;
+	private final GlobalClient globalClient;
 	
-	private int roomNum;
+	@Getter
+    private final int roomNum;
 	
 	public Room(int roomNum) throws IOException
 	{
@@ -48,13 +50,8 @@ public class Room
 	{
 		return gameServer.getNumClients();
 	}
-	
-	public int getRoomNum()
-	{
-		return this.roomNum;
-	}
-	
-	public boolean isAcceptingConnections()
+
+    public boolean isAcceptingConnections()
 	{
 		return gameServer.isAcceptingConnections() && globalClient.isRoomListed();
 	}

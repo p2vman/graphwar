@@ -3,6 +3,8 @@ package graphwar.graphserver;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
 
 public class NettyServerHandler extends ChannelInboundHandlerAdapter
 {
@@ -52,12 +54,12 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception
     {
-        if (evt instanceof io.netty.handler.timeout.IdleStateEvent)
+        if (evt instanceof IdleStateEvent)
         {
-            io.netty.handler.timeout.IdleStateEvent e =
-                    (io.netty.handler.timeout.IdleStateEvent) evt;
+            IdleStateEvent e =
+                    (IdleStateEvent) evt;
 
-            if (e.state() == io.netty.handler.timeout.IdleState.READER_IDLE)
+            if (e.state() == IdleState.READER_IDLE)
             {
                 if (clientConnection != null && clientConnection.checkTimeout())
                 {

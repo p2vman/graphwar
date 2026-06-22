@@ -175,7 +175,7 @@ public class RoomServer implements Runnable
 				String gs = p.getProperty("globalServer");
 				String init = p.getProperty("initialRooms");
 				if (gs != null) {
-					if (gs.startsWith("ws://") || gs.startsWith("wss://")) {
+					if (gs.contains("://")) {
 						try {
 							java.net.URI uri = new java.net.URI(gs);
 							if (uri.getHost() != null) graphwar.graphserver.Constants.GLOBAL_IP = uri.getHost();

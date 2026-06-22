@@ -23,9 +23,9 @@ import java.awt.*;
 
 public class GraphAngleDisplay extends JPanel 
 {
-	private Graphwar graphwar;
+	private final Graphwar graphwar;
 	
-	private static Font font = new Font("Sans", Font.PLAIN, 14);
+	private final static Font font = new Font("Sans", Font.PLAIN, 14);
 	
 	public GraphAngleDisplay(Graphwar graphwar)
 	{
