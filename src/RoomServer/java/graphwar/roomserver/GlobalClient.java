@@ -22,13 +22,17 @@ import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
 import lombok.Getter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 
 public class GlobalClient implements Runnable
-{			
+{
+	private static final Logger LOGGER = LoggerFactory.getLogger(GlobalClient.class);			
 	private Connection connection;
 	
 	private String localPlayer;
@@ -127,7 +131,7 @@ public class GlobalClient implements Runnable
 						}
 						catch(Exception e)
 						{
-							e.printStackTrace();
+							LOGGER.error("Throw: ", e);
 						}	
 					}
 				}break;
@@ -138,7 +142,7 @@ public class GlobalClient implements Runnable
 					{						
 						int numRooms = Integer.parseInt(info[1]);
 						
-						System.out.println("LIST_ROOMS " + this.roomName + " " + numRooms);
+						LOGGER.debug("LIST_ROOMS {} {}", this.roomName, numRooms);
 
 						this.roomListed = false;
 						for(int i=0; i<numRooms; i++)
@@ -157,15 +161,13 @@ public class GlobalClient implements Runnable
 									this.roomListed = true;
 									this.roomID = roomID;
 								}
-								
 							}
 							catch(Exception e)
 							{
-								e.printStackTrace();
-							}							
-						}
+								LOGGER.error("Throw: ", e);
+							}													}
 
-						System.out.println("roomListed " + this.roomName + " " + roomListed);
+						LOGGER.debug("roomListed {} {}", this.roomName, roomListed);
 					}
 				}break;
 				

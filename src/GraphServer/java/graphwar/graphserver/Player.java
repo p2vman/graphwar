@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Player
 {
@@ -36,7 +37,7 @@ public class Player
 	@Setter
     private boolean ready;
 	
-	private static int lastID = 0;
+	private static final AtomicInteger lastID = new AtomicInteger(0);
 	private final static Random random = new Random(System.currentTimeMillis());
 	
 	public Player(String name)
@@ -53,10 +54,9 @@ public class Player
 			this.team = Constants.TEAM2;
 		}
 		
-		this.playerID = lastID;
+		this.playerID = lastID.getAndIncrement();
 		this.ready = false;
-		
-		lastID++;
+
 	}
 	
 	public boolean getReady()

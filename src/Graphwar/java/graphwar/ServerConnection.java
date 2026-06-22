@@ -19,12 +19,15 @@ package graphwar;
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 
 public class ServerConnection implements Runnable
 {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ServerConnection.class);
 	private final Connection connection;
 	
 	private final GameData gameData;
@@ -42,23 +45,13 @@ public class ServerConnection implements Runnable
 	
 	public boolean checkTimeout()
 	{
-		if(System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP;
+    }
 
 	public boolean checkStayAliveTime()
 	{
-		if(System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE;
+    }
 
 	public void disconnect()
 	{
@@ -70,7 +63,7 @@ public class ServerConnection implements Runnable
 		}
 		catch (IOException e) 
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 	
@@ -125,7 +118,7 @@ public class ServerConnection implements Runnable
 			}
 			catch (IOException e) 
 			{
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 				
 				gameData.kickFromGame();
 				disconnect();

@@ -6,8 +6,12 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class NettyServerHandler extends ChannelInboundHandlerAdapter
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyServerHandler.class);
     private final GraphServer server;
     private ClientConnection clientConnection;
 
@@ -88,7 +92,7 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
     {
-        cause.printStackTrace();
+        LOGGER.error("Throw: ", cause);
         if (clientConnection != null)
         {
             server.removeClient(clientConnection);

@@ -19,15 +19,28 @@
 package graphwar.roomserver;
 
 import graphwar.graphserver.Constants;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ListIterator;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RoomServer implements Runnable
 {
-	private final List<Room> rooms;
+	private static final Logger LOGGER = LoggerFactory.getLogger(RoomServer.class);
+	private final ObjectList<Room> rooms;
 	private int numRooms;
 	
 	private boolean running;
@@ -36,7 +49,7 @@ public class RoomServer implements Runnable
 
 	public RoomServer()
 	{
-		rooms = new ArrayList<Room>();
+		rooms = new ObjectArrayList<>();
 		
 		numRooms = 0;
 		
@@ -50,7 +63,7 @@ public class RoomServer implements Runnable
 			}
 			catch (IOException e)
 			{
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 			}
 		}
 	}
@@ -67,14 +80,7 @@ public class RoomServer implements Runnable
 		
 		while(running)
 		{
-			try 
-			{
-				Thread.sleep(10000);
-			} 
-			catch (InterruptedException e) 
-			{
-				e.printStackTrace();
-			}
+			LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10000));
 			
 			ListIterator<Room> itr = rooms.listIterator();
 			
@@ -93,7 +99,7 @@ public class RoomServer implements Runnable
 					}
 					else
 					{
-						System.out.println("Restarting room "+room.getRoomNum());
+							LOGGER.info("Restarting room {}", room.getRoomNum());
 						
 						int num = room.getRoomNum();
 						room.stop();
@@ -112,13 +118,13 @@ public class RoomServer implements Runnable
 				}
 			}
 
-			System.out.println("numEmpty: "+numEmpty);
+			LOGGER.info("numEmpty: {}", numEmpty);
 			
 			if(numEmpty<3)
 			{
 				try
 				{
-					System.out.println("Adding room");
+					LOGGER.info("Adding room");
 					Room room = new Room(numRooms);
 					rooms.add(room);
 					numRooms++;
@@ -134,7 +140,7 @@ public class RoomServer implements Runnable
 				
 				if(room.getNumCLients() == 0)
 				{
-					System.out.println("Removing room");
+					LOGGER.info("Removing room");
 
 					room.stop();
 					rooms.remove(room);
@@ -143,14 +149,11 @@ public class RoomServer implements Runnable
 			}
 		}
 
-		System.out.println("Stopping");
-		
-		ListIterator<Room> itr = rooms.listIterator();		
-		while(itr.hasNext())
-		{
-			Room room = itr.next();			
-			room.stop();
-		}		
+		LOGGER.info("Stopping");
+
+        for (Room room : rooms) {
+            room.stop();
+        }
 		
 	}
 
@@ -165,55 +168,11 @@ public class RoomServer implements Runnable
 	
 	public static void main(String[] args)
 	{
-		copyResourceIfMissing("/roomserver.properties", "roomserver.properties");
-
-		java.io.File f = new java.io.File("roomserver.properties");
-		if (f.exists()) {
-			try (java.io.FileReader fr = new java.io.FileReader(f)) {
-				java.util.Properties p = new java.util.Properties();
-				p.load(fr);
-				String gs = p.getProperty("globalServer");
-				String init = p.getProperty("initialRooms");
-				if (gs != null) {
-					if (gs.contains("://")) {
-						try {
-							java.net.URI uri = new java.net.URI(gs);
-							if (uri.getHost() != null) graphwar.graphserver.Constants.GLOBAL_IP = uri.getHost();
-							if (uri.getPort() != -1) graphwar.graphserver.Constants.GLOBAL_PORT = uri.getPort();
-						} catch (Exception e) { }
-					} else {
-						String[] hp = gs.split(":" );
-						if (hp.length >= 1) graphwar.graphserver.Constants.GLOBAL_IP = hp[0];
-						if (hp.length >= 2) {
-							try { graphwar.graphserver.Constants.GLOBAL_PORT = Integer.parseInt(hp[1]); } catch (NumberFormatException e) {}
-						}
-					}
-				}
-				if (init != null) {
-					try { INITIAL_NUM_ROOMS = Integer.parseInt(init); } catch (NumberFormatException e) {}
-				}
-			} catch (Exception e) { e.printStackTrace(); }
-		}
-
 		handleArgs(args);
 
 		RoomServer roomServer = new RoomServer();
 		
 		new Thread(roomServer).start();
 		
-	}
-
-	private static void copyResourceIfMissing(String resourcePath, String destFileName) {
-		try {
-			java.io.File dest = new java.io.File(destFileName);
-			if (dest.exists()) return;
-			java.io.InputStream in = RoomServer.class.getResourceAsStream(resourcePath);
-			if (in == null) return;
-			java.nio.file.Files.copy(in, dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			in.close();
-			System.out.println("Copied default config resource " + resourcePath + " to " + destFileName);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 }

@@ -18,25 +18,21 @@ package graphwar.globalserver;
 
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
+import graphwar.graphserver.EventLoopGroupType;
 import graphwar.graphserver.NetworkProtocol;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.util.AttributeKey;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.util.*;
@@ -46,6 +42,7 @@ import java.util.concurrent.locks.LockSupport;
 
 public class GlobalServer implements Runnable
 {
+	private static final Logger LOGGER = LoggerFactory.getLogger(GlobalServer.class);
 	private final ObjectList<LobbyPlayer> players;
 	private final ObjectList<Room> rooms;
 		
@@ -196,7 +193,7 @@ public class GlobalServer implements Runnable
 		}
 		catch (IOException e)
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 			return false;
 		}    	
     }
@@ -223,7 +220,7 @@ public class GlobalServer implements Runnable
 			
 			if(code != NetworkProtocol.NO_INFO)
 			{
-				System.out.println("Received from "+player.getID()+": "+message);				
+                LOGGER.info("Received from {}: {}", player.getID(), message);
 			}
 			
 			switch(code)
@@ -259,7 +256,6 @@ public class GlobalServer implements Runnable
 						}						
 					}
 				}break;
-				
 				case NetworkProtocol.CREATE_ROOM:
 				{
 					if(info.length == 3)
@@ -272,7 +268,7 @@ public class GlobalServer implements Runnable
 							ipAddress = URLEncoder.encode(player.getIpAddress(), "UTF-8");
 						} catch (UnsupportedEncodingException e) 
 						{
-							e.printStackTrace();
+							LOGGER.error("Throw: ", e);
 						}
 						
 						Room room = new Room(roomName, ipAddress, portNumber);
@@ -354,7 +350,7 @@ public class GlobalServer implements Runnable
 
 				    if(!roomOk)
 				    {
-				        System.out.println("Removing room: "+room.getName());
+                        LOGGER.info("Removing room: {}", room.getName());
 
 				        itr.remove();
 				    }
@@ -373,8 +369,10 @@ public class GlobalServer implements Runnable
 	{
 		while(true) {
 			try {
-				bossGroup = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
-				workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
+				EventLoopGroupType groupType = EventLoopGroupType.getAvailable();
+                LOGGER.info("Using: {}", groupType);
+				bossGroup = groupType.newEventLoop(1);
+				workerGroup = groupType.newEventLoop();
 
 				try {
 					final GlobalServer self = this;
@@ -382,7 +380,7 @@ public class GlobalServer implements Runnable
 					ChannelFuture tcpFuture = null;
 					ServerBootstrap b = new ServerBootstrap();
 					b.group(bossGroup, workerGroup)
-							.channel(NioServerSocketChannel.class)
+							.channel(groupType.serverSocketCls)
 							.childHandler(new ChannelInitializer<SocketChannel>() {
 								@Override
 								protected void initChannel(SocketChannel ch) throws Exception {
@@ -427,7 +425,7 @@ public class GlobalServer implements Runnable
 
 										@Override
 										public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-											cause.printStackTrace();
+											LOGGER.error("Throw: ", cause);
 											ctx.close();
 										}
 									});
@@ -438,10 +436,7 @@ public class GlobalServer implements Runnable
 							.childOption(ChannelOption.TCP_NODELAY, true);
 
 					tcpFuture = b.bind(Constants.GLOBAL_PORT).sync();
-					System.out.println("GlobalServer listening on port " + Constants.GLOBAL_PORT);
-
-
-					// Wait for bound channel to close
+                    LOGGER.info("Server listening on port {}", Constants.GLOBAL_PORT);
 					if (tcpFuture != null) tcpFuture.channel().closeFuture().sync();
 
 				} finally {
@@ -450,7 +445,7 @@ public class GlobalServer implements Runnable
 				}
 
 			} catch (Exception e) {
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 				LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(1000));
 			}
 		}
@@ -461,13 +456,11 @@ public class GlobalServer implements Runnable
 	{
 		if(args.length > 0)
 		{
-			// Overrides ip to create local server
 			Constants.GLOBAL_IP = args[0];
 		}
 	}	
 	
-	public static void main(String[] args)
-	{
+	public static void main(String[] args) throws InterruptedException {
 		copyResourceIfMissing("/globalserver.properties", "globalserver.properties");
 
 		File f = new File("globalserver.properties");
@@ -484,8 +477,8 @@ public class GlobalServer implements Runnable
 		        if (ip != null) {
 		            graphwar.graphserver.Constants.GLOBAL_IP = ip;
 		        }
-		        System.out.println("Loaded globalserver.properties: ip="+graphwar.graphserver.Constants.GLOBAL_IP+" port="+graphwar.graphserver.Constants.GLOBAL_PORT);
-		    } catch (Exception e) { e.printStackTrace(); }
+                LOGGER.debug("Loaded globalserver.properties: ip={} port={}", Constants.GLOBAL_IP, Constants.GLOBAL_PORT);
+		    } catch (Exception e) { LOGGER.error("Throw: ", e); }
 		}
 
 		handleArgs(args);
@@ -493,13 +486,17 @@ public class GlobalServer implements Runnable
 		GlobalServer server = new GlobalServer();
 
 
-		new Thread(() -> {
+		Thread thread = new Thread(() -> {
 		    try {
 		        server.run();
 		    } catch (Exception e) {
-		        e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 		    }
-		}).start();
+		});
+
+		thread.setName("MainThread");
+		thread.start();
+		thread.join();
 	}
 
 	private static void copyResourceIfMissing(String resourcePath, String destFileName) {
@@ -511,7 +508,7 @@ public class GlobalServer implements Runnable
 			Files.copy(in, dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 			in.close();
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 

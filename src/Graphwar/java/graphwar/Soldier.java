@@ -21,7 +21,6 @@ import graphwar.graphserver.Constants;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.security.SecureRandom;
 import java.util.Random;
 
 public class Soldier

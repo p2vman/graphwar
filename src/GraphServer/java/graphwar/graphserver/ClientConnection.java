@@ -21,13 +21,14 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import lombok.Getter;
 import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ClientConnection
 {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ClientConnection.class);
 	@Getter
     private final Connection connection;
 	@Getter
@@ -100,7 +101,7 @@ public class ClientConnection
 		try {
 			connection.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 

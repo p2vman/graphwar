@@ -22,17 +22,22 @@ import graphwar.graphserver.NetworkProtocol;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ListIterator;
+import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 public class GameData implements Runnable
 {
+	private static final Logger LOGGER = LoggerFactory.getLogger(GameData.class);
 	private final Graphwar graphwar;
 	
 	private ServerConnection serverConnection;
@@ -233,7 +238,7 @@ public class GameData implements Runnable
 		} 
 		catch (UnsupportedEncodingException e) 
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 	
@@ -252,7 +257,7 @@ public class GameData implements Runnable
 		} 
 		catch (UnsupportedEncodingException e) 
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 
@@ -269,7 +274,7 @@ public class GameData implements Runnable
 			}
 			catch (UnsupportedEncodingException e)
 			{
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 			}
 		}
 	}
@@ -298,7 +303,7 @@ public class GameData implements Runnable
 			} 
 			catch (UnsupportedEncodingException e) 
 			{
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 			}
 		}
 	}
@@ -320,7 +325,7 @@ public class GameData implements Runnable
 			} 
 			catch (UnsupportedEncodingException e) 
 			{
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 			}
 		}
 	}
@@ -1118,7 +1123,7 @@ public class GameData implements Runnable
 				} 
 				catch (InterruptedException e) 
 				{
-					e.printStackTrace();
+					LOGGER.error("Throw: ", e);
 				}
 			}
 			
@@ -1273,13 +1278,13 @@ public class GameData implements Runnable
 		catch(Exception e)
 		{
 			invalidMessage(message);
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 	
 	private void invalidMessage(String message)
 	{
-		System.out.println("Invalid message received: " + message);
+		LOGGER.warn("Invalid message received: {}", message);
 	}
 	
 	public void kickFromGame()

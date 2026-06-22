@@ -19,30 +19,46 @@ package graphwar.graphserver;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
+import io.netty.handler.codec.LineBasedFrameDecoder;
+import io.netty.handler.codec.string.StringDecoder;
+import io.netty.handler.codec.string.StringEncoder;
+import lombok.Getter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class Connection
 {
 
     private Channel channel;
-    private io.netty.channel.nio.NioEventLoopGroup clientGroup;
+    private EventLoopGroup clientGroup;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(Connection.class);
+
+    @Getter
     private volatile long lastReceivedTime;
+    @Getter
     private volatile long lastSentTime;
 
-    private java.net.Socket socket;
+    private Socket socket;
     private BufferedReader reader;
     private BufferedWriter writer;
 
-    private java.util.concurrent.BlockingQueue<String> inboundQueue;
+    private final BlockingQueue<String> inboundQueue;
 
     private static final int READ_TIMEOUT_MS = 1000;
 
     public Connection(Channel channel)
     {
         this.channel = channel;
-        this.inboundQueue = new java.util.concurrent.LinkedBlockingQueue<>();
+        this.inboundQueue = new LinkedBlockingQueue<>();
         this.socket = null;
         this.lastReceivedTime = System.currentTimeMillis();
         this.lastSentTime = System.currentTimeMillis();
@@ -50,24 +66,24 @@ public class Connection
 
     public Connection(String host, int port) throws IOException
     {
-        this.inboundQueue = new java.util.concurrent.LinkedBlockingQueue<>();
+        this.inboundQueue = new LinkedBlockingQueue<>();
         this.lastReceivedTime = System.currentTimeMillis();
         this.lastSentTime = System.currentTimeMillis();
 
 
-        // Plain TCP client (existing behaviour)
-        clientGroup = new io.netty.channel.nio.NioEventLoopGroup(1);
+        EventLoopGroupType groupType = EventLoopGroupType.getAvailable();
+        clientGroup = groupType.newEventLoop(1);
         Bootstrap b = new Bootstrap();
         b.group(clientGroup)
-         .channel(io.netty.channel.socket.nio.NioSocketChannel.class)
+         .channel(groupType.clientSocketCls)
          .option(ChannelOption.TCP_NODELAY, true)
          .handler(new ChannelInitializer<Channel>() {
              @Override
              protected void initChannel(Channel ch) {
                  ChannelPipeline p = ch.pipeline();
-                 p.addLast(new io.netty.handler.codec.LineBasedFrameDecoder(8192));
-                 p.addLast(new io.netty.handler.codec.string.StringDecoder(java.nio.charset.StandardCharsets.UTF_8));
-                 p.addLast(new io.netty.handler.codec.string.StringEncoder(java.nio.charset.StandardCharsets.UTF_8));
+                 p.addLast(new LineBasedFrameDecoder(8192));
+                 p.addLast(new StringDecoder(StandardCharsets.UTF_8));
+                 p.addLast(new StringEncoder(StandardCharsets.UTF_8));
                  p.addLast(new SimpleChannelInboundHandler<String>() {
                      @Override
                      protected void channelRead0(ChannelHandlerContext ctx, String msg) throws Exception {
@@ -77,7 +93,7 @@ public class Connection
 
                      @Override
                      public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-                         cause.printStackTrace();
+                         LOGGER.error("Throw: ", cause);
                          ctx.close();
                      }
                  });
@@ -86,7 +102,7 @@ public class Connection
 
         ChannelFuture f = b.connect(host, port);
         try {
-            if (!f.await(java.util.concurrent.TimeUnit.SECONDS.toMillis(10))) {
+            if (!f.await(TimeUnit.SECONDS.toMillis(10))) {
                 clientGroup.shutdownGracefully();
                 throw new IOException("Connection timed out");
             }
@@ -103,12 +119,12 @@ public class Connection
         this.channel = f.channel();
     }
 
-    public Connection(java.net.Socket socket) throws IOException
+    public Connection(Socket socket) throws IOException
     {
         this.socket = socket;
         this.socket.setSoTimeout(READ_TIMEOUT_MS);
-        this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
-        this.writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8));
+        this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+        this.writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
 
         this.inboundQueue = null;
         this.lastReceivedTime = System.currentTimeMillis();
@@ -119,17 +135,46 @@ public class Connection
     {
         if (channel != null)
         {
-            channel.close();
+            try {
+                channel.close().syncUninterruptibly();
+            } catch (Exception e) {
+                // ignore
+            } finally {
+                channel = null;
+            }
         }
 
         if (clientGroup != null)
         {
-            clientGroup.shutdownGracefully();
+            try {
+                clientGroup.shutdownGracefully().await(5000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                // ignore
+            } finally {
+                clientGroup = null;
+            }
         }
 
         if (socket != null)
         {
-            socket.close();
+            try {
+                socket.close();
+            } catch (IOException e) {
+                // ignore
+            } finally {
+                socket = null;
+            }
+        }
+
+        if (reader != null) {
+            try { reader.close(); } catch (IOException e) { }
+            reader = null;
+        }
+        if (writer != null) {
+            try { writer.close(); } catch (IOException e) { }
+            writer = null;
         }
     }
 
@@ -144,16 +189,6 @@ public class Connection
             return socket.getInetAddress().getHostAddress();
         }
         return "";
-    }
-
-    public long getLastSentTime()
-    {
-        return this.lastSentTime;
-    }
-
-    public long getLastReceivedTime()
-    {
-        return this.lastReceivedTime;
     }
 
     public void sendMessage(String message)
@@ -177,18 +212,18 @@ public class Connection
             }
             catch (IOException e)
             {
-                e.printStackTrace();
+                LOGGER.error("Throw: ", e);
             }
         }
     }
 
-    public String readMessage() throws IOException, java.net.SocketTimeoutException
+    public String readMessage() throws IOException
     {
         if (inboundQueue != null && channel != null && channel.isActive())
         {
             try
             {
-                String msg = inboundQueue.poll(READ_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+                String msg = inboundQueue.poll(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                 if (msg == null)
                 {
                     throw new java.net.SocketTimeoutException();

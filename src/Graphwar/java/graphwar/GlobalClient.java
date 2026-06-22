@@ -20,19 +20,21 @@ package graphwar;
 import graphwar.graphserver.Connection;
 import graphwar.graphserver.Constants;
 import graphwar.graphserver.NetworkProtocol;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.Arrays;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Vector;
 
 public class GlobalClient implements Runnable
-{	
+{
+	private static final Logger LOGGER = LoggerFactory.getLogger(GlobalClient.class);
 	private static class LobbyPlayer
 	{
 		@Getter
@@ -53,9 +55,9 @@ public class GlobalClient implements Runnable
 	
 	private Connection connection;
 	
-	private final List<LobbyPlayer> players;
+	private final ObjectList<LobbyPlayer> players;
 	@Getter
-    private final List<Room> rooms;
+    private final ObjectList<Room> rooms;
 	
 	private String localPlayer;
 	
@@ -73,8 +75,8 @@ public class GlobalClient implements Runnable
 	
 	public GlobalClient(Graphwar graphwar)
 	{
-		this.players = new Vector<LobbyPlayer>();
-		this.rooms = new Vector<Room>();
+		this.players = new ObjectArrayList<>();
+		this.rooms = new ObjectArrayList<>();
 		
 		this.running = false;
 		
@@ -110,7 +112,9 @@ public class GlobalClient implements Runnable
 		this.localPlayer = playerName;
 					
 		this.running = true;
-		new Thread(this).start();
+		Thread thread = new Thread(this);
+
+		thread.start();
 		
 		((PreGameScreen)graphwar.getUI().getScreen(Constants.PRE_GAME_SCREEN)).refreshGlobalButton();
 		((GameScreen)graphwar.getUI().getScreen(Constants.GAME_SCREEN)).refreshGlobalButton();
@@ -235,8 +239,8 @@ public class GlobalClient implements Runnable
 	}
 	
 	private void handleMessage(String message)
-	{		
-		//System.out.println("Received from "+"server: "+message);
+	{
+        LOGGER.warn("Received from server: {}", message);
 		
 		String[] info = new String[0];
 
@@ -269,7 +273,7 @@ public class GlobalClient implements Runnable
 						}
 						catch(Exception e)
 						{
-							e.printStackTrace();
+							LOGGER.error("Throw: ", e);
 						}	
 					}
 				}break;
@@ -287,7 +291,7 @@ public class GlobalClient implements Runnable
 						}
 						catch(Exception e)
 						{
-							e.printStackTrace();
+							LOGGER.error("Throw: ", e);
 						}	
 					}
 				}break;
@@ -319,7 +323,7 @@ public class GlobalClient implements Runnable
 						}
 						catch(Exception e)
 						{
-							e.printStackTrace();
+							LOGGER.error("Throw: ", e);
 						}	
 					}
 				}break;
@@ -343,7 +347,7 @@ public class GlobalClient implements Runnable
 							}
 							catch(Exception e)
 							{
-								e.printStackTrace();
+								LOGGER.error("Throw: ", e);
 							}							
 						}
 					}
@@ -372,7 +376,7 @@ public class GlobalClient implements Runnable
 							}
 							catch(Exception e)
 							{
-								e.printStackTrace();
+								LOGGER.error("Throw: ", e);
 							}							
 						}
 					}
@@ -419,7 +423,7 @@ public class GlobalClient implements Runnable
 		}
 		catch(Exception e)
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}	
 	}
 	
@@ -439,7 +443,7 @@ public class GlobalClient implements Runnable
 			}
 			catch(Exception e)
 			{
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 			}
 		}
 	}
@@ -458,7 +462,7 @@ public class GlobalClient implements Runnable
 		}
 		catch(Exception e)
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}		
 	}
 	
@@ -541,7 +545,7 @@ public class GlobalClient implements Runnable
 		}
 		catch (IOException e) 
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 	
@@ -590,7 +594,7 @@ public class GlobalClient implements Runnable
 			}
 			catch (IOException e) 
 			{
-				e.printStackTrace();
+				LOGGER.error("Throw: ", e);
 				
 				disconnect(true);
 			}

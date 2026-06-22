@@ -22,6 +22,9 @@ import graphwar.graphserver.Constants;
 import graphwar.graphserver.GraphServer;
 import lombok.Getter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
@@ -29,6 +32,8 @@ import java.util.List;
 
 public class Graphwar extends JFrame
 {
+	private static final Logger LOGGER = LoggerFactory.getLogger(Graphwar.class);
+
 	private GraphServer gameServer;
 	@Getter
     private GameData gameData;
@@ -86,11 +91,11 @@ public class Graphwar extends JFrame
 		}
 		catch (InterruptedException e) 
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		} 
 		catch (Exception e) 
 		{
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 		
 		this.add(graphUI);
@@ -114,7 +119,7 @@ public class Graphwar extends JFrame
 		
 		if(gameServer != null)
 		{
-			gameServer.finalize();
+			gameServer.shutdown();
 			gameServer = null;
 		}
 	}
@@ -137,9 +142,9 @@ public class Graphwar extends JFrame
 			if (in == null) return;
 			java.nio.file.Files.copy(in, dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 			in.close();
-			System.out.println("Copied default config resource " + resourcePath + " to " + destFileName);
+			LOGGER.info("Copied default config resource {} to {}", resourcePath, destFileName);
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOGGER.error("Throw: ", e);
 		}
 	}
 
@@ -147,7 +152,7 @@ public class Graphwar extends JFrame
 	{
 		if(gameServer != null)
 		{
-			gameServer.finalize();
+			gameServer.shutdown();
 			gameServer = null;
 		}
 	}

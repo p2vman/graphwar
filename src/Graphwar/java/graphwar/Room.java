@@ -17,7 +17,10 @@
 
 package graphwar;
 
-public class Room 
+import lombok.Getter;
+
+@Getter
+public class Room
 {
 	private final String name;
 	private final int port;
@@ -43,34 +46,5 @@ public class Room
 		this.numPlayers = numPlayers;
 		
 	}
-		
-	public String getName()
-	{
-		return this.name;
-	}
-	
-	public int getPort()
-	{
-		return this.port;
-	}
-	
-	public String getIp()
-	{
-		return this.ip;
-	}
-	
-	public int getNumPlayers()
-	{
-		return this.numPlayers;
-	}
-	
-	public int getGameMode()
-	{
-		return this.gameMode;
-	}
-	
-	public int getRoomID()
-	{
-		return this.roomID;
-	}
+
 }

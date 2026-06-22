@@ -17,21 +17,23 @@
 
 package graphwar.graphserver;
 
+import graphwar.graphserver.commands.CommandException;
+import graphwar.graphserver.commands.Dispatcher;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
+import lombok.Getter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -39,6 +41,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class GraphServer implements Runnable
 {
@@ -47,17 +51,21 @@ public class GraphServer implements Runnable
 	protected ObjectList<Player> players;
 	protected boolean acceptingConnections;
 	protected int gameMode;
+	@Getter
 	protected int gameState;
 	private boolean countingDown;
-	StartDelayer startDelayer;
+	private StartDelayer startDelayer;
 
 	private long timeTurnStarted;
 
 	private final static Random random = new SecureRandom();
+	private static final Logger LOGGER = LoggerFactory.getLogger(GraphServer.class);
 
 	private EventLoopGroup bossGroup;
 	private EventLoopGroup workerGroup;
 	private Channel serverChannel;
+	@Getter
+	private final Dispatcher command_dispatcher;
 
 	public GraphServer(int port) throws IOException
 	{
@@ -73,6 +81,18 @@ public class GraphServer implements Runnable
 		startDelayer = null;
 
 		acceptingConnections = true;
+		this.command_dispatcher = new Dispatcher();
+
+		this.command_dispatcher.register("skip", ((arguments, command, client, server) -> {
+			if (server.getGameState() == Constants.GAME)
+			{
+				client.setSkipLevel(true);
+				server.checkSkipLevel();
+			} else {
+				throw new CommandException("Invalid game state");
+			}
+			return 0;
+		}));
 	}
 
 	public GraphServer() throws IOException
@@ -84,8 +104,10 @@ public class GraphServer implements Runnable
 	{
 		acceptingConnections = true;
 
-		bossGroup   = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
-		workerGroup =new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
+		EventLoopGroupType groupType = EventLoopGroupType.getAvailable();
+		LOGGER.info("Using: {}", groupType);
+		bossGroup   = groupType.newEventLoop(1);
+		workerGroup = groupType.newEventLoop();
 
 		try
 		{
@@ -93,7 +115,7 @@ public class GraphServer implements Runnable
 
 			ServerBootstrap b = new ServerBootstrap();
 			b.group(bossGroup, workerGroup)
-					.channel(NioServerSocketChannel.class)
+					.channel(groupType.serverSocketCls)
 					.childHandler(new ChannelInitializer<SocketChannel>()
 					{
 						@Override
@@ -156,19 +178,45 @@ public class GraphServer implements Runnable
 		new Thread(this).start();
 	}
 
-	public void finalize()
+	public void shutdown()
 	{
 		String message = NetworkProtocol.DISCONNECT + "";
 		sendMessageAll(message);
 
         for (ClientConnection client : clients) {
-            client.disconnect();
-        }
+		    try {
+		        client.disconnect();
+		    } catch (Exception e) {
+				// ignore
+		    }
+		}
 
 		stopListening();
+
+		try {
+		    if (serverChannel != null) serverChannel.close().syncUninterruptibly();
+		} catch (Exception e) {
+		    // ignore
+		}
+
+		try {
+		    if (bossGroup != null) bossGroup.shutdownGracefully().await(5000);
+		} catch (InterruptedException e) {
+		    Thread.currentThread().interrupt();
+		} catch (Exception e) {
+			// ignore
+		}
+
+		try {
+		    if (workerGroup != null) workerGroup.shutdownGracefully().await(5000);
+		} catch (InterruptedException e) {
+		    Thread.currentThread().interrupt();
+		} catch (Exception e) {
+			// ignore
+		}
 	}
 
-	public synchronized void addClient(ClientConnection client)
+	public void addClient(ClientConnection client)
 	{
 		if (!acceptingConnections)
 		{
@@ -178,28 +226,34 @@ public class GraphServer implements Runnable
 			return;
 		}
 
-		if (clients.size() < Constants.MAX_CLIENTS)
-		{
-			if (clients.isEmpty())
+		lock.lock();
+		try {
+			if (clients.size() < Constants.MAX_CLIENTS)
 			{
-				client.setLeader(true);
+				if (clients.isEmpty())
+				{
+					client.setLeader(true);
+				}
+
+				clients.add(client);
+
+				sendAllInfoMessage(client);
+
+				if (client.isLeader())
+				{
+					sendLeaderMessage(client);
+				}
 			}
-
-			clients.add(client);
-
-			sendAllInfoMessage(client);
-
-			if (client.isLeader())
+			else
 			{
-				sendLeaderMessage(client);
+				String message = NetworkProtocol.GAME_FULL + "";
+				client.sendMessage(message);
+				client.disconnect();
 			}
+		} finally {
+			lock.unlock();
 		}
-		else
-		{
-			String message = NetworkProtocol.GAME_FULL + "";
-			client.sendMessage(message);
-			client.disconnect();
-		}
+
 	}
 
 	private void sendMessageAll(String message)
@@ -658,14 +712,19 @@ public class GraphServer implements Runnable
 		}
 	}
 
-	protected synchronized void sendStartGameMessage()
+	protected void sendStartGameMessage()
 	{
-		if (checkAllReady())
-		{
-			startGame();
-		}
+		lock.lock();
+		try {
+			if (checkAllReady())
+			{
+				startGame();
+			}
 
-		countingDown = false;
+			countingDown = false;
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	private void sendStartCountDown()
@@ -886,22 +945,8 @@ public class GraphServer implements Runnable
 		startGame();
 	}
 
-	private void handleCommands(String msg, ClientConnection client) throws UnsupportedEncodingException
-	{
-		if (msg.startsWith("-"))
-		{
-			if (msg.compareToIgnoreCase("-skip") == 0)
-			{
-				if (this.gameState == Constants.GAME)
-				{
-					client.setSkipLevel(true);
-					checkSkipLevel();
-				}
-			}
-		}
-	}
-
-	public synchronized void handleMessage(String message, ClientConnection client)
+	private final Lock lock = new ReentrantLock();
+	public void handleMessage(String message, ClientConnection client)
 	{
 		String[] info = message.split("&");
 
@@ -918,14 +963,19 @@ public class GraphServer implements Runnable
 
 				case NetworkProtocol.ADD_PLAYER:
 				{
-					if (players.size() < Constants.MAX_PLAYERS)
-					{
-						Player player = new Player(info[1]);
-						client.addPlayer(player);
-						players.add(player);
+					lock.lock();
+					try {
+						if (players.size() < Constants.MAX_PLAYERS)
+						{
+							Player player = new Player(info[1]);
+							client.addPlayer(player);
+							players.add(player);
 
-						setEveryoneNotReady();
-						sendAddPlayerMessage(player, client);
+							setEveryoneNotReady();
+							sendAddPlayerMessage(player, client);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -934,11 +984,16 @@ public class GraphServer implements Runnable
 				{
 					int team     = Integer.parseInt(info[1]);
 					int playerID = Integer.parseInt(info[2]);
+					lock.lock();
+					try {
 
-					if (setTeam(team, playerID, client))
-					{
-						setEveryoneNotReady();
-						sendMessageAll(message);
+						if (setTeam(team, playerID, client))
+						{
+							setEveryoneNotReady();
+							sendMessageAll(message);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -947,10 +1002,15 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					if (removePlayer(playerID, client))
-					{
-						setEveryoneNotReady();
-						sendMessageAll(message);
+					lock.lock();
+					try {
+						if (removePlayer(playerID, client))
+						{
+							setEveryoneNotReady();
+							sendMessageAll(message);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -959,10 +1019,15 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					if (addSoldier(playerID, client))
-					{
-						setEveryoneNotReady();
-						sendMessageAll(message);
+					lock.lock();
+					try {
+						if (addSoldier(playerID, client))
+						{
+							setEveryoneNotReady();
+							sendMessageAll(message);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -971,10 +1036,15 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					if (removeSoldier(playerID, client))
-					{
-						setEveryoneNotReady();
-						sendMessageAll(message);
+					lock.lock();
+					try {
+						if (removeSoldier(playerID, client))
+						{
+							setEveryoneNotReady();
+							sendMessageAll(message);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -985,7 +1055,8 @@ public class GraphServer implements Runnable
 
 					if (checkPlayer(playerID, client))
 					{
-						handleCommands(info[2], client);
+						//handleCommands(info[2], client);
+						this.command_dispatcher.handleCommand(info[2], client, this);
 						sendMessageAll(message);
 					}
 				}
@@ -993,12 +1064,17 @@ public class GraphServer implements Runnable
 
 				case NetworkProtocol.NEXT_MODE:
 				{
-					if (client.isLeader())
-					{
-						gameMode = (gameMode + 1) % 3;
+					lock.lock();
+					try {
+						if (client.isLeader())
+						{
+							gameMode = (gameMode + 1) % 3;
 
-						setEveryoneNotReady();
-						sendModeMessage();
+							setEveryoneNotReady();
+							sendModeMessage();
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -1008,14 +1084,19 @@ public class GraphServer implements Runnable
 					int playerID = Integer.parseInt(info[1]);
 					boolean ready = Integer.parseInt(info[2]) != 0;
 
-					if (setReady(playerID, client, ready))
-					{
-						sendMessageAll(message);
-					}
+					lock.lock();
+					try {
+						if (setReady(playerID, client, ready))
+						{
+							sendMessageAll(message);
+						}
 
-					if (checkAllReady())
-					{
-						sendStartCountDown();
+						if (checkAllReady())
+						{
+							sendStartCountDown();
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -1024,8 +1105,13 @@ public class GraphServer implements Runnable
 				{
 					if (gameState == Constants.GAME)
 					{
-						client.setReadyNextTurn(true);
-						checkNextTurn();
+						lock.lock();
+						try {
+							client.setReadyNextTurn(true);
+							checkNextTurn();
+						} finally {
+							lock.unlock();
+						}
 					}
 				}
 				break;
@@ -1034,9 +1120,14 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					if (checkPlayer(playerID, client) && gameState == Constants.GAME)
-					{
-						sendMessageAll(message);
+					lock.lock();
+					try {
+						if (checkPlayer(playerID, client) && gameState == Constants.GAME)
+						{
+							sendMessageAll(message);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -1045,9 +1136,14 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					if (checkPlayer(playerID, client) && gameState == Constants.GAME)
-					{
-						sendMessageAll(message);
+					lock.lock();
+					try {
+						if (checkPlayer(playerID, client) && gameState == Constants.GAME)
+						{
+							sendMessageAll(message);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
@@ -1063,7 +1159,12 @@ public class GraphServer implements Runnable
 
 				case NetworkProtocol.GAME_FINISHED:
 				{
-					finishGame(client);
+					lock.lock();
+					try {
+						finishGame(client);
+					} finally {
+						lock.unlock();
+					}
 				}
 				break;
 
@@ -1071,29 +1172,33 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					if (checkPlayer(playerID, client) && gameState == Constants.GAME)
-					{
-						sendMessageAll(message);
+					try {
+						if (checkPlayer(playerID, client) && gameState == Constants.GAME)
+						{
+							sendMessageAll(message);
+						}
+					} finally {
+						lock.unlock();
 					}
 				}
 				break;
 
 				case NetworkProtocol.DISCONNECT:
 				{
-					removeClient(client);
-					client.disconnect();
+					lock.lock();
+					try {
+						removeClient(client);
+						client.disconnect();
+					} finally {
+						lock.unlock();
+					}
 				}
 			}
 		}
 		catch (Exception e)
 		{
-			invalidMessage(message);
-			e.printStackTrace();
+			LOGGER.error("Invalid message received: {}", message);
+			LOGGER.error("Throw: ", e);
 		}
-	}
-
-	private void invalidMessage(String message)
-	{
-		System.out.println("Invalid message received: " + message);
 	}
 }

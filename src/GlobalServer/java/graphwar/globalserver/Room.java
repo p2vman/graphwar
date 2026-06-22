@@ -70,11 +70,6 @@ public class Room
 
     public String getIp()
 	{
-		if(this.ip.startsWith("127.0.0.1"))
-		{
-			return Constants.GLOBAL_IP;
-		}
-		
 		return this.ip;
 	}
 }

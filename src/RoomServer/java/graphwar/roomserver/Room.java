@@ -20,6 +20,9 @@ package graphwar.roomserver;
 import graphwar.graphserver.Constants;
 import lombok.Getter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 
 public class Room
@@ -29,6 +32,8 @@ public class Room
 	
 	@Getter
     private final int roomNum;
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(Room.class);
 	
 	public Room(int roomNum) throws IOException
 	{
@@ -58,19 +63,20 @@ public class Room
 	
 	public void printInfo()
 	{
-		System.out.print("Room "+roomNum+": ");
-		System.out.print(this.getNumCLients()+" clients; ");
-		System.out.print(gameServer.getNumPlayers()+" players; ");
-		System.out.print("state: "+gameServer.getGameState()+"; ");
-		System.out.print("accepting connections: "+gameServer.isAcceptingConnections()+"; ");
-		System.out.print("room listed: "+globalClient.isRoomListed()+"; ");
-		System.out.println();
-		
+		LOGGER.info("Room {}: {} clients; {} players; state: {}; accepting connections: {}; room listed: {}",
+		        roomNum,
+		        this.getNumCLients(),
+		        gameServer.getNumPlayers(),
+		        gameServer.getGameState(),
+		        gameServer.isAcceptingConnections(),
+		        globalClient.isRoomListed());
 	}
 	
 	public void stop()
 	{
-		gameServer.finalize();
+		if (gameServer != null) {
+			try { gameServer.shutdown(); } catch (Exception e) { }
+		}
 		globalClient.stop();
 	}
 }

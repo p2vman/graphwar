@@ -76,8 +76,23 @@ dependencies {
     implementation "io.netty:netty-codec:4.2.15.Final"
     implementation "io.netty:netty-handler:4.2.15.Final"
 
+    // https://mvnrepository.com/artifact/io.netty/netty-transport-native-epoll
+    implementation 'io.netty:netty-transport-native-epoll:4.2.15.Final'
+    runtimeOnly 'io.netty:netty-transport-native-epoll:4.2.15.Final:linux-x86_64'
+
+    // https://mvnrepository.com/artifact/io.netty/netty-transport-native-io_uring
+    implementation 'io.netty:netty-transport-native-io_uring:4.2.8.Final'
+    runtimeOnly 'io.netty:netty-transport-native-io_uring:4.2.8.Final:linux-x86_64'
+
     // Source: https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
     implementation 'it.unimi.dsi:fastutil:8.5.18'
+
+    // SLF4J for structured logging
+    implementation 'org.slf4j:slf4j-api:1.7.36'
+    runtimeOnly 'org.slf4j:slf4j-simple:1.7.36'
+
+    implementation 'org.slf4j:slf4j-api:2.0.13'
+    implementation 'ch.qos.logback:logback-classic:1.5.13'
 }
 
 sourceSets.GlobalServer.compileClasspath += sourceSets.GraphServer.output

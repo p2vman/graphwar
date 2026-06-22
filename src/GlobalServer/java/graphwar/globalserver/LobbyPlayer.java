@@ -69,23 +69,13 @@ public class LobbyPlayer implements Runnable
 
     public boolean checkTimeout()
 	{
-		if(System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastReceivedTime() > Constants.TIMEOUT_DROP;
+    }
 
 	public boolean checkStayAliveTime()
 	{
-		if(System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE)
-		{
-			return true;
-		}
-		
-		return false;
-	}
+        return System.currentTimeMillis() - connection.getLastSentTime() > Constants.TIMEOUT_KEEPALIVE;
+    }
 
 	public void disconnect()
 	{
