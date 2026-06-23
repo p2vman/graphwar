@@ -29,26 +29,34 @@ public class Room
 {
 	private final RemoteGraphServer gameServer;
 	private final GlobalClient globalClient;
+	@Getter
+    private volatile boolean parked = false;
+	@Getter
+    private volatile long lastActiveTime = System.currentTimeMillis();
 	
 	@Getter
     private final int roomNum;
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(Room.class);
 	
-	public Room(int roomNum) throws IOException
+	public Room(int roomNum, PortPool pool) throws IOException
 	{
 		this.roomNum = roomNum;
 		
 		globalClient = new GlobalClient();
 		
 		//int port = Constants.PUBLIC_ROOM_PORT+roomNum;		
-		gameServer = new RemoteGraphServer(globalClient);		
+		gameServer = new RemoteGraphServer(globalClient, pool);
 		int port = gameServer.getPort();
 		
 		new Thread(gameServer).start();
 		
 		globalClient.joinGlobalServer(Constants.GLOBAL_IP, Constants.GLOBAL_PORT, Constants.DUMMY_NAME);
-		globalClient.createRoom("Public Room "+roomNum, port);
+		globalClient.createRoom("Сommunity: " + roomNum, port);
+	}
+
+	public int getPort() {
+		return this.gameServer.getPort();
 	}
 	
 	public int getNumCLients()
@@ -58,7 +66,7 @@ public class Room
 
     public boolean isAcceptingConnections()
 	{
-		return gameServer.isAcceptingConnections() && globalClient.isRoomListed();
+		return !this.parked && gameServer.isAcceptingConnections() && globalClient.isRoomListed();
 	}
 	
 	public void printInfo()
@@ -71,6 +79,14 @@ public class Room
 		        gameServer.isAcceptingConnections(),
 		        globalClient.isRoomListed());
 	}
+
+	public int getNumPlayers() {
+		return gameServer.getNumPlayers();
+	}
+
+	public int getGameState() {
+		return gameServer.getGameState();
+	}
 	
 	public void stop()
 	{
@@ -78,5 +94,39 @@ public class Room
 			try { gameServer.shutdown(); } catch (Exception e) { }
 		}
 		globalClient.stop();
+	}
+
+	public void park() {
+		this.parked = true;
+		try {
+		    gameServer.setAcceptingConnections(false);
+		} catch (Throwable t) {
+		    LOGGER.warn("Failed to set gameServer acceptingConnections to false: {}", t.toString());
+		}
+		try {
+		    globalClient.hideRoom();
+		} catch (Throwable t) {
+		    LOGGER.warn("Failed to hide room in GlobalClient: {}", t.toString());
+		}
+	}
+
+	public void unpark() {
+		this.parked = false;
+		try {
+		    gameServer.setAcceptingConnections(true);
+		} catch (Throwable t) {
+		    LOGGER.warn("Failed to set gameServer acceptingConnections to true: {}", t.toString());
+		}
+		try {
+		    globalClient.recreateRoom();
+		} catch (Throwable t) {
+		    LOGGER.warn("Failed to recreate room in GlobalClient: {}", t.toString());
+		}
+	}
+
+    public void updateActiveTime() {
+		if (this.getNumCLients() == 0) {
+			this.lastActiveTime = System.currentTimeMillis();
+		}
 	}
 }

@@ -17,8 +17,13 @@
 
 package graphwar.graphserver;
 
+import graphwar.graphserver.card.CardGenerator;
+import graphwar.graphserver.card.GeneratorFactory;
+import graphwar.graphserver.card.StandardCardGenerator;
+import graphwar.graphserver.commands.CommandContext;
 import graphwar.graphserver.commands.CommandException;
 import graphwar.graphserver.commands.Dispatcher;
+import graphwar.graphserver.registry.Identifier;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.socket.SocketChannel;
@@ -34,19 +39,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
+import java.io.UnsupportedEncodingException;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-
 public class GraphServer implements Runnable
 {
 	private final int port;
+	@Getter
 	protected ObjectList<ClientConnection> clients;
 	protected ObjectList<Player> players;
 	protected boolean acceptingConnections;
@@ -67,6 +76,12 @@ public class GraphServer implements Runnable
 	@Getter
 	private final Dispatcher command_dispatcher;
 
+
+	private final ConcurrentMap<String, AtomicInteger> ipClientCounts = new ConcurrentHashMap<>();
+	
+	private CardGenerator cardGenerator;
+
+
 	public GraphServer(int port) throws IOException
 	{
 		clients  = new ObjectArrayList<>();
@@ -82,14 +97,47 @@ public class GraphServer implements Runnable
 
 		acceptingConnections = true;
 		this.command_dispatcher = new Dispatcher();
+		this.cardGenerator = new StandardCardGenerator(random, players);
 
-		this.command_dispatcher.register("skip", ((arguments, command, client, server) -> {
-			if (server.getGameState() == Constants.GAME)
+		this.command_dispatcher.register("skip", ((ctx,arguments, command) -> {
+			if (ctx.getServer().getGameState() == Constants.GAME)
 			{
-				client.setSkipLevel(true);
-				server.checkSkipLevel();
+				ctx.getClient().setSkipLevel(true);
+				ctx.getServer().checkSkipLevel();
 			} else {
 				throw new CommandException("Invalid game state");
+			}
+			return 0;
+		}));
+
+		this.command_dispatcher.register("generator", ((ctx,arguments, command) -> {
+			if (arguments.size() < 1) {
+				ctx.sendMessage("Usage: -generator <subcommand>");
+				ctx.sendMessage("-generator list");
+				ctx.sendMessage("-generator set <id>");
+				return 0;
+			}
+			switch (arguments.getString(0)) {
+				case "set": {
+					if (arguments.size() < 2) {
+						ctx.sendMessage("Usage: -generator set <id>");
+						return 0;
+					}
+					Optional<GeneratorFactory> opt = Registries.CARD_GENERATORS.getO(Identifier.tryParse(arguments.getString(1)));
+					if (opt.isPresent()) {
+						this.cardGenerator = opt.get().create(random, players);
+						ctx.sendMessage("Ok.");
+					} else {
+						ctx.sendMessage("Generator not found");
+					}
+					break;
+				}
+				case "list": {
+					for (Identifier key : Registries.CARD_GENERATORS.getKeys()) {
+						ctx.sendMessage(key.toString());
+					}
+					break;
+				}
 			}
 			return 0;
 		}));
@@ -127,7 +175,7 @@ public class GraphServer implements Runnable
 									Constants.TIMEOUT_KEEPALIVE, 0, 0,
 									TimeUnit.MILLISECONDS));
 
-							p.addLast(new LineBasedFrameDecoder(8192));
+							p.addLast(new LineBasedFrameDecoder(Constants.MAX_MESSAGE_LENGTH));
 							p.addLast(new StringDecoder(StandardCharsets.UTF_8));
 							p.addLast(new StringEncoder(StandardCharsets.UTF_8));
 
@@ -156,9 +204,9 @@ public class GraphServer implements Runnable
 
 	public int getPort()
 	{
-		if (serverChannel != null && serverChannel.localAddress() instanceof java.net.InetSocketAddress)
+		if (serverChannel != null && serverChannel.localAddress() instanceof InetSocketAddress)
 		{
-			return ((java.net.InetSocketAddress) serverChannel.localAddress()).getPort();
+			return ((InetSocketAddress) serverChannel.localAddress()).getPort();
 		}
 		return this.port;
 	}
@@ -174,7 +222,15 @@ public class GraphServer implements Runnable
 
 	private void restartListening()
 	{
+		if (serverChannel != null && serverChannel.isOpen())
+		{
+			acceptingConnections = true;
+			LOGGER.info("Restarted accepting connections (server channel already open)");
+			return;
+		}
+
 		acceptingConnections = true;
+		LOGGER.info("Starting server thread to accept connections");
 		new Thread(this).start();
 	}
 
@@ -185,11 +241,12 @@ public class GraphServer implements Runnable
 
         for (ClientConnection client : clients) {
 		    try {
+		        LOGGER.info("Shutting down connection to client {}", client.getConnection().getIpAddress());
 		        client.disconnect();
 		    } catch (Exception e) {
-				// ignore
+		        // ignore
 		    }
-		}
+        }
 
 		stopListening();
 
@@ -218,11 +275,28 @@ public class GraphServer implements Runnable
 
 	public void addClient(ClientConnection client)
 	{
+		String ip = client.getConnection().getIpAddress();
+		if (ip != null && !ip.isEmpty()) {
+			AtomicInteger counter = ipClientCounts.computeIfAbsent(ip, k -> new AtomicInteger(0));
+			int nowCount = counter.incrementAndGet();
+			if (nowCount > Constants.MAX_CLIENTS_PER_IP) {
+				LOGGER.info("Rejecting connection from {}: too many connections from this IP ({} > {})", ip, nowCount, Constants.MAX_CLIENTS_PER_IP);
+				client.sendMessage(NetworkProtocol.DISCONNECT + "");
+				counter.decrementAndGet();
+				return;
+			}
+		}
+
 		if (!acceptingConnections)
 		{
 			String message = NetworkProtocol.GAME_FULL + "";
+			LOGGER.info("Rejecting connection from {}: not accepting connections", client.getConnection().getIpAddress());
 			client.sendMessage(message);
 			client.disconnect();
+			if (ip != null && !ip.isEmpty()) {
+				AtomicInteger c = ipClientCounts.get(ip);
+				if (c != null) c.decrementAndGet();
+			}
 			return;
 		}
 
@@ -247,8 +321,13 @@ public class GraphServer implements Runnable
 			else
 			{
 				String message = NetworkProtocol.GAME_FULL + "";
+				LOGGER.info("Rejecting connection from {}: server full", client.getConnection().getIpAddress());
 				client.sendMessage(message);
 				client.disconnect();
+				if (ip != null && !ip.isEmpty()) {
+					AtomicInteger c = ipClientCounts.get(ip);
+					if (c != null) c.decrementAndGet();
+				}
 			}
 		} finally {
 			lock.unlock();
@@ -268,6 +347,18 @@ public class GraphServer implements Runnable
 	{
 		String message = NetworkProtocol.NEW_LEADER + "";
 		client.sendMessage(message);
+	}
+
+	protected void sendWelcomeMessage(ClientConnection client, Player player)
+	{
+		try {
+			String welcome = "Welcome to the community room!";
+			String encoded = URLEncoder.encode(welcome, StandardCharsets.UTF_8.name());
+			String welcomeMsg = NetworkProtocol.CHAT_MSG + "&" + player.getID() + "&" + encoded;
+			client.sendMessage(welcomeMsg);
+		} catch (UnsupportedEncodingException e) {
+			LOGGER.error("Failed to encode welcome message", e);
+		}
 	}
 
 	private void sendAllInfoMessage(ClientConnection client)
@@ -546,7 +637,16 @@ public class GraphServer implements Runnable
 	{
 		this.clients.remove(client);
 
-		List<Player> clientPlayers = client.getPlayers();
+        String ip = client.getConnection().getIpAddress();
+        if (ip != null && !ip.isEmpty()) {
+            AtomicInteger c = ipClientCounts.get(ip);
+            if (c != null) {
+            	int v = c.decrementAndGet();
+            	if (v <= 0) ipClientCounts.remove(ip);
+            }
+        }
+
+        List<Player> clientPlayers = client.getPlayers();
 
         for (Player player : clientPlayers) {
             String message = NetworkProtocol.REMOVE_PLAYER + "&" + player.getID();
@@ -555,128 +655,16 @@ public class GraphServer implements Runnable
             players.remove(player);
         }
 
-		if (!clients.isEmpty())
-		{
-			if (client.isLeader())
-			{
-				clients.get(0).setLeader(true);
-				sendLeaderMessage(clients.get(0));
-			}
-		}
-
-		checkNextTurn();
-	}
-
-	private int[] generateCircles()
-	{
-		int numCircles = (int) (random.nextGaussian() * Constants.NUM_CIRCLES_STANDARD_DEVIATION + Constants.NUM_CIRCLES_MEAN_VALUE);
-
-		if (numCircles < 1)
-		{
-			numCircles = 1;
-		}
-
-		int[] circles = new int[3 * numCircles];
-
-		for (int i = 0; i < numCircles; i++)
-		{
-			circles[3 * i]     = random.nextInt(Constants.PLANE_LENGTH);
-			circles[3 * i + 1] = random.nextInt(Constants.PLANE_HEIGHT);
-
-            do {
-                circles[3 * i + 2] = (int) (random.nextGaussian() * Constants.CIRCLE_STANDARD_DEVIATION + Constants.CIRCLE_MEAN_RADIUS);
-            } while (circles[3 * i + 2] < 0);
-		}
-
-		return circles;
-	}
-
-	private static class Soldier
-	{
-		public int x;
-		public int y;
-
-		public Soldier(int x, int y)
-		{
-			this.x = x;
-			this.y = y;
-		}
-	}
-
-	private double distance(int x1, int y1, int x2, int y2)
-	{
-		return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
-	}
-
-	private boolean testSoldier(Soldier soldier, List<Soldier> soldiers, int[] circles)
-	{
-
-        for (Soldier tempSoldier : soldiers) {
-            if (Math.abs(soldier.x - tempSoldier.x) < 20 && Math.abs(soldier.y - tempSoldier.y) < 20) {
-                return false;
+        if (!clients.isEmpty())
+        {
+            if (client.isLeader())
+            {
+            	clients.get(0).setLeader(true);
+            	sendLeaderMessage(clients.get(0));
             }
         }
 
-		int numCircles = circles.length / 3;
-		for (int i = 0; i < numCircles; i++)
-		{
-			if (distance(soldier.x, soldier.y, circles[3 * i], circles[3 * i + 1]) < circles[3 * i + 2] + Constants.SOLDIER_SELECTION_RADIUS)
-			{
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	private Soldier generateSoldier(List<Soldier> soldiers, int[] circles, int team)
-	{
-		Soldier soldier;
-
-		do
-		{
-			int x = random.nextInt(Constants.PLANE_LENGTH / 2 - 2 * Constants.SOLDIER_RADIUS) + Constants.SOLDIER_RADIUS;
-			int y = random.nextInt(Constants.PLANE_HEIGHT - 2 * Constants.SOLDIER_RADIUS) + Constants.SOLDIER_RADIUS;
-
-			if (team == Constants.TEAM2)
-			{
-				x += Constants.PLANE_LENGTH / 2;
-			}
-
-			soldier = new Soldier(x, y);
-
-		}
-		while (!testSoldier(soldier, soldiers, circles));
-
-		return soldier;
-	}
-
-	private int[] generateSoldiers(int[] circles)
-	{
-		List<Soldier> soldiers = new ArrayList<Soldier>();
-
-        for (Player player : players) {
-            for (int i = 0; i < player.getNumSoldiers(); i++) {
-                Soldier soldier = generateSoldier(soldiers, circles, player.getTeam());
-                soldiers.add(soldier);
-            }
-        }
-
-		int[] soldiersPos = new int[soldiers.size() * 2];
-
-		ListIterator<Soldier> sitr = soldiers.listIterator();
-		int i = 0;
-		while (sitr.hasNext())
-		{
-			Soldier tempSoldier = sitr.next();
-
-			soldiersPos[2 * i]     = tempSoldier.x;
-			soldiersPos[2 * i + 1] = tempSoldier.y;
-
-			i++;
-		}
-
-		return soldiersPos;
+        checkNextTurn();
 	}
 
 	private class StartDelayer implements Runnable
@@ -705,9 +693,9 @@ public class GraphServer implements Runnable
 				Thread.sleep(Constants.START_GAME_DELAY);
 				graphServer.sendStartGameMessage();
 			}
-			catch (InterruptedException e)
+			catch (Throwable e)
 			{
-				// зупинений нормально
+				LOGGER.error("Throw: ", e);
 			}
 		}
 	}
@@ -806,17 +794,20 @@ public class GraphServer implements Runnable
 
 	protected void startGame()
 	{
-		stopListening();
-
+		acceptingConnections = false;
+		LOGGER.info("Starting game: no longer accepting new connections");
+		
 		reorderPlayers();
 
-		int[] circles    = generateCircles();
+		int[] circles    = cardGenerator.generateCircles();
 		int numCircles   = circles.length / 3;
 
-		int[] soldiers = generateSoldiers(circles);
+		int[] soldiers = cardGenerator.generateSoldiers(circles, players);
 
 		if (soldiers.length == 0)
 		{
+			LOGGER.info("SO {}", soldiers.length);
+			acceptingConnections = true;
 			return;
 		}
 
@@ -908,6 +899,9 @@ public class GraphServer implements Runnable
 	protected void goPreGame()
 	{
 		gameState = Constants.PRE_GAME;
+		Identifier[] keys = Registries.CARD_GENERATORS.getKeys().toArray(new Identifier[0]);
+		cardGenerator = Registries.CARD_GENERATORS.get(keys[random.nextInt(keys.length)]).create(random, players);
+
 		restartListening();
 	}
 
@@ -950,6 +944,7 @@ public class GraphServer implements Runnable
 	{
 		String[] info = message.split("&");
 
+		lock.lock();
 		try
 		{
 			int type = Integer.parseInt(info[0]);
@@ -963,19 +958,36 @@ public class GraphServer implements Runnable
 
 				case NetworkProtocol.ADD_PLAYER:
 				{
-					lock.lock();
-					try {
-						if (players.size() < Constants.MAX_PLAYERS)
-						{
-							Player player = new Player(info[1]);
-							client.addPlayer(player);
-							players.add(player);
-
-							setEveryoneNotReady();
-							sendAddPlayerMessage(player, client);
+					String name = info.length > 1 ? info[1].trim() : "";
+					boolean valid = true;
+					if (name.isEmpty() || name.equals(Constants.DUMMY_NAME) || name.length() > 32)
+					{
+						valid = false;
+					}
+					if (valid) {
+						for (Player p : players) {
+							if (p.getName() != null && p.getName().equalsIgnoreCase(name)) {
+								valid = false;
+								break;
+							}
 						}
-					} finally {
-						lock.unlock();
+					}
+					if (!valid) {
+						LOGGER.info("Rejecting ADD_PLAYER from {}: invalid name '{}'", client.getConnection().getIpAddress(), name);
+						client.sendMessage(NetworkProtocol.DISCONNECT + "");
+						client.disconnect();
+						return;
+					}
+					if (players.size() < Constants.MAX_PLAYERS)
+					{
+						Player player = new Player(name);
+						client.addPlayer(player);
+						players.add(player);
+						
+						setEveryoneNotReady();
+						sendAddPlayerMessage(player, client);
+
+						sendWelcomeMessage(client, player);
 					}
 				}
 				break;
@@ -984,16 +996,11 @@ public class GraphServer implements Runnable
 				{
 					int team     = Integer.parseInt(info[1]);
 					int playerID = Integer.parseInt(info[2]);
-					lock.lock();
-					try {
 
-						if (setTeam(team, playerID, client))
-						{
-							setEveryoneNotReady();
-							sendMessageAll(message);
-						}
-					} finally {
-						lock.unlock();
+					if (setTeam(team, playerID, client))
+					{
+						setEveryoneNotReady();
+						sendMessageAll(message);
 					}
 				}
 				break;
@@ -1002,15 +1009,10 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					lock.lock();
-					try {
-						if (removePlayer(playerID, client))
-						{
-							setEveryoneNotReady();
-							sendMessageAll(message);
-						}
-					} finally {
-						lock.unlock();
+					if (removePlayer(playerID, client))
+					{
+						setEveryoneNotReady();
+						sendMessageAll(message);
 					}
 				}
 				break;
@@ -1019,15 +1021,10 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					lock.lock();
-					try {
-						if (addSoldier(playerID, client))
-						{
-							setEveryoneNotReady();
-							sendMessageAll(message);
-						}
-					} finally {
-						lock.unlock();
+					if (addSoldier(playerID, client))
+					{
+						setEveryoneNotReady();
+						sendMessageAll(message);
 					}
 				}
 				break;
@@ -1036,15 +1033,10 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					lock.lock();
-					try {
-						if (removeSoldier(playerID, client))
-						{
-							setEveryoneNotReady();
-							sendMessageAll(message);
-						}
-					} finally {
-						lock.unlock();
+					if (removeSoldier(playerID, client))
+					{
+						setEveryoneNotReady();
+						sendMessageAll(message);
 					}
 				}
 				break;
@@ -1055,26 +1047,33 @@ public class GraphServer implements Runnable
 
 					if (checkPlayer(playerID, client))
 					{
+						String decoded = URLDecoder.decode(info[2], StandardCharsets.UTF_8.name());
+
+						LOGGER.info(
+								"Message from player {} (room {}): {}",
+								playerID,
+								port,
+								decoded
+						);
+
 						//handleCommands(info[2], client);
-						this.command_dispatcher.handleCommand(info[2], client, this);
-						sendMessageAll(message);
+						CommandContext ctx = new CommandContext(client, this);
+						this.command_dispatcher.handleCommand(decoded, ctx);
+						if (!ctx.isHidemessage()) {
+							sendMessageAll(message);
+						}
 					}
 				}
 				break;
 
 				case NetworkProtocol.NEXT_MODE:
 				{
-					lock.lock();
-					try {
-						if (client.isLeader())
-						{
-							gameMode = (gameMode + 1) % 3;
+					if (client.isLeader())
+					{
+						gameMode = (gameMode + 1) % 3;
 
-							setEveryoneNotReady();
-							sendModeMessage();
-						}
-					} finally {
-						lock.unlock();
+						setEveryoneNotReady();
+						sendModeMessage();
 					}
 				}
 				break;
@@ -1084,19 +1083,14 @@ public class GraphServer implements Runnable
 					int playerID = Integer.parseInt(info[1]);
 					boolean ready = Integer.parseInt(info[2]) != 0;
 
-					lock.lock();
-					try {
-						if (setReady(playerID, client, ready))
-						{
-							sendMessageAll(message);
-						}
+					if (setReady(playerID, client, ready))
+					{
+						sendMessageAll(message);
+					}
 
-						if (checkAllReady())
-						{
-							sendStartCountDown();
-						}
-					} finally {
-						lock.unlock();
+					if (checkAllReady())
+					{
+						sendStartCountDown();
 					}
 				}
 				break;
@@ -1105,13 +1099,8 @@ public class GraphServer implements Runnable
 				{
 					if (gameState == Constants.GAME)
 					{
-						lock.lock();
-						try {
-							client.setReadyNextTurn(true);
-							checkNextTurn();
-						} finally {
-							lock.unlock();
-						}
+						client.setReadyNextTurn(true);
+						checkNextTurn();
 					}
 				}
 				break;
@@ -1120,14 +1109,9 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					lock.lock();
-					try {
-						if (checkPlayer(playerID, client) && gameState == Constants.GAME)
-						{
-							sendMessageAll(message);
-						}
-					} finally {
-						lock.unlock();
+					if (checkPlayer(playerID, client) && gameState == Constants.GAME)
+					{
+						sendMessageAll(message);
 					}
 				}
 				break;
@@ -1136,14 +1120,9 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					lock.lock();
-					try {
-						if (checkPlayer(playerID, client) && gameState == Constants.GAME)
-						{
-							sendMessageAll(message);
-						}
-					} finally {
-						lock.unlock();
+					if (checkPlayer(playerID, client) && gameState == Constants.GAME)
+					{
+						sendMessageAll(message);
 					}
 				}
 				break;
@@ -1159,12 +1138,7 @@ public class GraphServer implements Runnable
 
 				case NetworkProtocol.GAME_FINISHED:
 				{
-					lock.lock();
-					try {
-						finishGame(client);
-					} finally {
-						lock.unlock();
-					}
+					finishGame(client);
 				}
 				break;
 
@@ -1172,26 +1146,18 @@ public class GraphServer implements Runnable
 				{
 					int playerID = Integer.parseInt(info[1]);
 
-					try {
-						if (checkPlayer(playerID, client) && gameState == Constants.GAME)
-						{
-							sendMessageAll(message);
-						}
-					} finally {
-						lock.unlock();
+					if (checkPlayer(playerID, client) && gameState == Constants.GAME)
+					{
+						sendMessageAll(message);
 					}
 				}
 				break;
 
 				case NetworkProtocol.DISCONNECT:
 				{
-					lock.lock();
-					try {
-						removeClient(client);
-						client.disconnect();
-					} finally {
-						lock.unlock();
-					}
+					LOGGER.info("Client requested disconnect: {}", client.getConnection().getIpAddress());
+					removeClient(client);
+					client.disconnect();
 				}
 			}
 		}
@@ -1199,6 +1165,17 @@ public class GraphServer implements Runnable
 		{
 			LOGGER.error("Invalid message received: {}", message);
 			LOGGER.error("Throw: ", e);
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	public void tryLock(Runnable runnable) {
+		lock.lock();
+		try {
+			runnable.run();
+		} finally {
+			lock.unlock();
 		}
 	}
 }

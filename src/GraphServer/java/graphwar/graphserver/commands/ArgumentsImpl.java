@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 
 import java.util.Optional;
 
-class ArgumentsImpl implements IArguments {
+public class ArgumentsImpl implements IArguments {
     private final ObjectList<String> args;
 
     public ArgumentsImpl(ObjectList<String> args) {

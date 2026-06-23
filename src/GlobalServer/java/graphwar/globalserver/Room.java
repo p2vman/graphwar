@@ -16,7 +16,6 @@
 //  along with Graphwar.  If not, see <http://www.gnu.org/licenses/>.
 package graphwar.globalserver;
 
-import graphwar.graphserver.Constants;
 import lombok.Getter;
 
 public class Room 

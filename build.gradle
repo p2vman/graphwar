@@ -87,12 +87,16 @@ dependencies {
     // Source: https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
     implementation 'it.unimi.dsi:fastutil:8.5.18'
 
-    // SLF4J for structured logging
-    implementation 'org.slf4j:slf4j-api:1.7.36'
-    runtimeOnly 'org.slf4j:slf4j-simple:1.7.36'
-
     implementation 'org.slf4j:slf4j-api:2.0.13'
     implementation 'ch.qos.logback:logback-classic:1.5.13'
+
+    // Source: https://mvnrepository.com/artifact/org.jline/jline
+    implementation 'org.jline:jline:3.25.1'
+
+    // https://mvnrepository.com/artifact/org.joml/joml
+    implementation("org.joml:joml:1.10.8")
+    // https://mvnrepository.com/artifact/org.joml/joml-primitives
+    implementation("org.joml:joml-primitives:1.10.0")
 }
 
 sourceSets.GlobalServer.compileClasspath += sourceSets.GraphServer.output

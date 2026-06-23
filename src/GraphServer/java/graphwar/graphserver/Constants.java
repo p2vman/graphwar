@@ -41,7 +41,12 @@ public class Constants
 	//public static final String ENCODED_DUMMY_NAME = "%23E(S_%24%40)!Xc";
 	
 	public static final int START_GAME_DELAY = 5000;
-	
+
+	// Maximum allowed length for a single protocol message line (in bytes/characters)
+	public static final int MAX_MESSAGE_LENGTH = 65536;
+
+	public static final int MAX_CLIENTS_PER_IP = 3;
+
 	public static final int TURN_TIME = 60000;
 	
 	public static final int MAX_PLAYERS = 10;

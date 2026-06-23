@@ -71,7 +71,7 @@ public class Connection
         this.lastSentTime = System.currentTimeMillis();
 
 
-        EventLoopGroupType groupType = EventLoopGroupType.getAvailable();
+        EventLoopGroupType groupType = EventLoopGroupType.getAvailableOf(EventLoopGroupType.Epoll);
         clientGroup = groupType.newEventLoop(1);
         Bootstrap b = new Bootstrap();
         b.group(clientGroup)
@@ -81,7 +81,7 @@ public class Connection
              @Override
              protected void initChannel(Channel ch) {
                  ChannelPipeline p = ch.pipeline();
-                 p.addLast(new LineBasedFrameDecoder(8192));
+                 p.addLast(new LineBasedFrameDecoder(Constants.MAX_MESSAGE_LENGTH));
                  p.addLast(new StringDecoder(StandardCharsets.UTF_8));
                  p.addLast(new StringEncoder(StandardCharsets.UTF_8));
                  p.addLast(new SimpleChannelInboundHandler<String>() {

@@ -31,6 +31,9 @@ public class ClientConnection
 	private static final Logger LOGGER = LoggerFactory.getLogger(ClientConnection.class);
 	@Getter
     private final Connection connection;
+    @Getter
+    private final long connectTimeMs;
+
 	@Getter
     private final ObjectList<Player> players;
 	@Getter
@@ -48,6 +51,7 @@ public class ClientConnection
 	{
 		this.server     = server;
 		this.connection = connection;
+		this.connectTimeMs = System.currentTimeMillis();
 
 		this.players       = new ObjectArrayList<>();
 		this.leader        = false;
@@ -98,6 +102,7 @@ public class ClientConnection
 
 	public void disconnect()
 	{
+		LOGGER.info("Disconnecting client {}", connection.getIpAddress());
 		try {
 			connection.close();
 		} catch (IOException e) {

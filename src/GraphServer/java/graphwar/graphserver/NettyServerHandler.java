@@ -40,6 +40,7 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter
 
             if (message == null)
             {
+                LOGGER.info("Received null message from {}, disconnecting", clientConnection.getConnection().getIpAddress());
                 server.removeClient(clientConnection);
                 clientConnection.disconnect();
             }
@@ -67,6 +68,7 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter
             {
                 if (clientConnection != null && clientConnection.checkTimeout())
                 {
+                    LOGGER.info("Client timed out {} - removing and disconnecting", clientConnection.getConnection().getIpAddress());
                     server.removeClient(clientConnection);
                     clientConnection.disconnect();
                 }
@@ -83,6 +85,7 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter
     {
         if (clientConnection != null)
         {
+            LOGGER.debug("Channel inactive for {}, removing client", clientConnection.getConnection().getIpAddress());
             server.removeClient(clientConnection);
             clientConnection.disconnect();
             clientConnection = null;
@@ -95,6 +98,7 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter
         LOGGER.error("Throw: ", cause);
         if (clientConnection != null)
         {
+            LOGGER.info("Exception for {}, disconnecting", clientConnection.getConnection().getIpAddress());
             server.removeClient(clientConnection);
             clientConnection.disconnect();
             clientConnection = null;

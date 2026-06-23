@@ -17,16 +17,20 @@
 
 package graphwar.roomserver;
 
-import graphwar.graphserver.ClientConnection;
-import graphwar.graphserver.Constants;
-import graphwar.graphserver.GraphServer;
-import graphwar.graphserver.Player;
+import graphwar.graphserver.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 public class RemoteGraphServer extends GraphServer
 {
+	private static final Logger LOGGER = LoggerFactory.getLogger(RemoteGraphServer.class);
 	private final GlobalClient globalClient;
+	private final PortPool port_pool;
 	
 	public int getNumClients()
 	{
@@ -47,10 +51,34 @@ public class RemoteGraphServer extends GraphServer
 	{
 		return this.acceptingConnections;
 	}
-		
-	public RemoteGraphServer(GlobalClient globalClient) throws IOException
+
+	public void setAcceptingConnections(boolean accepting)
 	{
-		super();
+		this.acceptingConnections = accepting;
+		if (!accepting) {
+		    LOGGER.info("RemoteGraphServer on port {} is now not accepting new connections", getPort());
+		} else {
+		    LOGGER.info("RemoteGraphServer on port {} is now accepting new connections", getPort());
+		}
+
+		tryLock(() -> {
+			try {
+				String welcome = !accepting ? "Room now not accepting new connections" : "Room now accepting new connections";
+				String encoded = URLEncoder.encode(welcome, StandardCharsets.UTF_8.name());
+				String msg = NetworkProtocol.CHAT_MSG + "&" + -1 + "&" + encoded;
+				for (ClientConnection client : clients) {
+					client.sendMessage(msg);
+				}
+			} catch (UnsupportedEncodingException e) {
+				LOGGER.error("Failed to encode welcome message", e);
+			}
+		});
+	}
+		
+	public RemoteGraphServer(GlobalClient globalClient, PortPool pool) throws IOException
+	{
+		super(pool.bind());
+		this.port_pool = pool;
 		
 		this.globalClient = globalClient;		
 	}
@@ -109,5 +137,11 @@ public class RemoteGraphServer extends GraphServer
 		{
 			globalClient.recreateRoom();
 		}
-	}	
+	}
+
+	@Override
+	public void shutdown() {
+		super.shutdown();
+		this.port_pool.unbind(getPort());
+	}
 }

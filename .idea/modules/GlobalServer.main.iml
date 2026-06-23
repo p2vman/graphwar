@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id="GlobalServer:main" external.linked.project.path="$MODULE_DIR$/../../GlobalServer" external.root.project.path="$MODULE_DIR$/../../GlobalServer" external.system.id="GRADLE" external.system.module.group="io.p2vman" external.system.module.type="sourceSet" external.system.module.version="1.0-SNAPSHOT" type="CPP_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <output url="file://$MODULE_DIR$/../../GlobalServer/build/classes/java/main" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../GlobalServer/src/main">
+      <sourceFolder url="file://$MODULE_DIR$/../../GlobalServer/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../GlobalServer/src/main/resources" type="java-resource" />
+    </content>
+    <orderEntry type="jdk" jdkName="corretto-1.8" jdkType="JavaSDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

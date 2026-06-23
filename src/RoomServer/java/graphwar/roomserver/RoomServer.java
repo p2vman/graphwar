@@ -19,23 +19,21 @@
 package graphwar.roomserver;
 
 import graphwar.graphserver.Constants;
+import graphwar.graphserver.commands.ArgumentsImpl;
+import graphwar.graphserver.commands.IArguments;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.util.ListIterator;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.LockSupport;
-
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ListIterator;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 public class RoomServer implements Runnable
 {
@@ -44,11 +42,23 @@ public class RoomServer implements Runnable
 	private int numRooms;
 	
 	private boolean running;
-	
+
+	private static final int MIN_ROOMS = 2;
+	private static final int MAX_ROOMS = 5;
+	private static final int MAX_PLAYERS_PER_ROOM = 10;
+	private static final long MAX_IDLE_TIME_MS = TimeUnit.MINUTES.toMillis(3);
+
 	public static int INITIAL_NUM_ROOMS = 1;
+	public final PortPool pool = new PortPool();
 
 	public RoomServer()
 	{
+		pool.addPort(10001);
+		pool.addPort(10002);
+		pool.addPort(10003);
+		pool.addPort(10004);
+		pool.addPort(10005);
+		pool.addPort(10006);
 		rooms = new ObjectArrayList<>();
 		
 		numRooms = 0;
@@ -57,7 +67,7 @@ public class RoomServer implements Runnable
 		{
 			try
 			{
-				Room room = new Room(numRooms);
+				Room room = new Room(numRooms, pool);
 				rooms.add(room);
 				numRooms++;
 			}
@@ -72,89 +82,107 @@ public class RoomServer implements Runnable
 	{
 		running = false;
 	}
-	
 
-	public void run() 
+
+	@Override
+	public void run()
 	{
 		running = true;
-		
-		while(running)
+
+		while (running)
 		{
-			LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(10000));
-			
+			LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(10));
+
 			ListIterator<Room> itr = rooms.listIterator();
-			
-			int numEmpty = 0;
-			while(itr.hasNext())
+
+			while (itr.hasNext())
 			{
 				Room room = itr.next();
-				
 				room.printInfo();
-				
-				if(room.getNumCLients() == 0)
+
+				boolean noClients = room.getNumCLients() == 0;
+				int state = room.getGameState();
+
+				boolean isParked = room.isParked();
+
+				boolean isIdleTimeout = noClients && (System.currentTimeMillis() - room.getLastActiveTime() > MAX_IDLE_TIME_MS);
+
+				if ((noClients && state == Constants.NONE && isIdleTimeout) || (isParked && state == Constants.NONE))
 				{
-					if(room.isAcceptingConnections())
+					LOGGER.info("Stopping/Restarting room {} (Reason: Idle/Parked)", room.getRoomNum());
+					room.stop();
+					itr.remove();
+
+					if (!isParked)
 					{
-						numEmpty++;
+						try
+						{
+							Room newRoom = new Room(room.getRoomNum(), pool);
+							itr.add(newRoom);
+						}
+						catch (IOException e)
+						{
+							LOGGER.error("Failed to restart room {}", room.getRoomNum(), e);
+						}
 					}
 					else
 					{
-							LOGGER.info("Restarting room {}", room.getRoomNum());
-						
-						int num = room.getRoomNum();
-						room.stop();
-						try
-						{
-							Room newRoom = new Room(num);
-							
-							itr.remove();
-							itr.add(newRoom);
-						} 
-						catch (IOException e)
-						{
-							e.printStackTrace();
-						}
-					}						
+						LOGGER.info("Room {} successfully parked and removed.", room.getRoomNum());
+					}
 				}
 			}
 
-			LOGGER.info("numEmpty: {}", numEmpty);
-			
-			if(numEmpty<3)
+			boolean hasAvailableRoom = false;
+			for (Room room : rooms)
+			{
+				int state = room.getGameState();
+				if (state == Constants.PRE_GAME &&
+						room.isAcceptingConnections() &&
+						room.getNumPlayers() < MAX_PLAYERS_PER_ROOM &&
+						!room.isParked())
+				{
+					hasAvailableRoom = true;
+					break;
+				}
+			}
+
+			if (!hasAvailableRoom && rooms.size() < MAX_ROOMS)
 			{
 				try
 				{
 					LOGGER.info("Adding room");
-					Room room = new Room(numRooms);
+					Room room = new Room(numRooms, pool);
 					rooms.add(room);
 					numRooms++;
-				} 
+				}
 				catch (IOException e)
 				{
-					e.printStackTrace();
+					LOGGER.error("Failed to create room", e);
 				}
 			}
-			else if(numEmpty > 3)
-			{
-				Room room = rooms.get(rooms.size()-1);
-				
-				if(room.getNumCLients() == 0)
-				{
-					LOGGER.info("Removing room");
 
-					room.stop();
-					rooms.remove(room);
-					numRooms--;
+			while (rooms.size() > MIN_ROOMS)
+			{
+				Room room = rooms.get(rooms.size() - 1);
+
+				if (room.getGameState() != Constants.NONE || room.getNumCLients() != 0)
+				{
+					break;
 				}
+
+				LOGGER.info("Removing extra idle room {}", room.getRoomNum());
+
+				room.stop();
+				rooms.remove(rooms.size() - 1);
+				numRooms--;
 			}
 		}
 
 		LOGGER.info("Stopping");
-
-        for (Room room : rooms) {
-            room.stop();
-        }
-		
+		for (Room room : rooms)
+		{
+			room.stop();
+		}
 	}
 
 	public static void handleArgs(String[] args)
@@ -166,13 +194,48 @@ public class RoomServer implements Runnable
 		}
 	}
 	
-	public static void main(String[] args)
-	{
+	public static void main(String[] args) throws IOException {
+		Terminal terminal = TerminalBuilder.builder().system(true).build();
+		LineReader reader = LineReaderBuilder.builder().terminal(terminal).build();
+
 		handleArgs(args);
 
 		RoomServer roomServer = new RoomServer();
-		
-		new Thread(roomServer).start();
-		
+
+		Thread server = new Thread(roomServer);
+		server.start();
+
+		boolean loop = true;
+		while (loop) {
+			String line = reader.readLine(" > ");
+			if (line == null) continue;
+			IArguments arguments = new ArgumentsImpl(ObjectList.of(line.trim().split("\\s+")));
+			switch (arguments.getString(0)) {
+				case "exit": {
+					loop = false;
+					break;
+				}
+				case "park":
+				{
+					int port = arguments.getInt(1);
+					for (Room room : roomServer.rooms) {
+						if (room.getPort() == port)
+							room.park();
+					}
+					break;
+				}
+				case "unpark":
+				{
+					int port = arguments.getInt(1);
+					for (Room room : roomServer.rooms) {
+						if (room.getPort() == port)
+							room.unpark();
+					}
+					break;
+				}
+			}
+		}
+
+		server.interrupt();
 	}
 }

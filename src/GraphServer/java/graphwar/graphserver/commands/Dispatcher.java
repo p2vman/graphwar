@@ -1,7 +1,5 @@
 package graphwar.graphserver.commands;
 
-import graphwar.graphserver.ClientConnection;
-import graphwar.graphserver.GraphServer;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -28,7 +26,7 @@ public class Dispatcher {
         }
     }
 
-    public int handle(String input, @NonNull ClientConnection client, @NonNull GraphServer server) throws CommandException {
+    public int handle(String input, @NonNull CommandContext ctx) throws CommandException {
         if (input == null || input.trim().isEmpty()) {
             throw new IllegalArgumentException("Input string cannot be empty");
         }
@@ -38,19 +36,19 @@ public class Dispatcher {
         lock.readLock().lock();
         try {
             if (!commands.containsKey(command)) throw new CommandException.CommandNotFoundException(command);
-            return commands.get(command).handle(new ArgumentsImpl(ObjectList.of(rawArgs)), command, client, server);
+            return commands.get(command).handle(ctx, new ArgumentsImpl(ObjectList.of(rawArgs)), command);
         } finally {
             lock.readLock().unlock();
         }
     }
 
-    public int handleCommand(@NonNull String input, @NonNull ClientConnection client, @NonNull GraphServer server) {
+    public int handleCommand(@NonNull String input, @NonNull CommandContext ctx) {
         try {
             if (input.startsWith("-")) {
-                return handle(input.substring(1), client, server);
+                return handle(input.substring(1), ctx);
             }
         } catch (CommandException e) {
-            client.sendMessage(e.build());
+            ctx.sendMessage(e.build());
         }
         return 0;
     }
